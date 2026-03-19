@@ -31,7 +31,7 @@ Thumbs.db
 htmlcov/
 
 # Generated reports (large files)
-report.html
+/report.html
 *.lhar
 
 # Trace files

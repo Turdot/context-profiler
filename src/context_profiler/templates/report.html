@@ -1,0 +1,2168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>context-profiler</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --bg-0: #060606;
+  --bg-1: #0e0e0e;
+  --bg-2: #1a1a1a;
+  --bg-3: #252525;
+  --border: #2a2a2a;
+  --text-0: #e0e0e0;
+  --text-1: #a0a0a0;
+  --text-2: #666;
+  --accent: #5b9bf5;
+  --color-system: #484f58;
+  --color-user: #1f6feb;
+  --color-assistant: #238636;
+  --color-tool: #8957e5;
+  --color-tool-use: #da6d28;
+  --color-tool-result: #2ea043;
+  --color-tool-def: #6e4a1e;
+  --color-text: #388bfd;
+  --color-field: #9e6a03;
+  --color-messages: #30363d;
+  --color-root: #21262d;
+  --color-tool-defs: #5a3e1e;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'IBM Plex Mono', 'SF Mono', 'Fira Code', monospace;
+  background: var(--bg-0);
+  color: var(--text-0);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Toolbar ─────────────────────────────────────── */
+.toolbar {
+  height: 24px;
+  min-height: 24px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 11px;
+  gap: 12px;
+  user-select: none;
+}
+.toolbar-title {
+  font-weight: 600;
+  color: var(--text-1);
+  letter-spacing: 0.5px;
+}
+.toolbar-sep {
+  width: 1px;
+  height: 12px;
+  background: var(--border);
+}
+.toolbar-badge {
+  font-size: 10px;
+  color: var(--text-2);
+  padding: 1px 6px;
+  background: var(--bg-3);
+  border-radius: 3px;
+}
+.toolbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.toolbar-btn {
+  font-size: 10px;
+  color: var(--text-2);
+  padding: 1px 8px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.07s;
+}
+.toolbar-btn:hover { background: var(--bg-3); color: var(--text-1); }
+.toolbar-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ── Timeline ────────────────────────────────────── */
+.timeline {
+  height: 100px;
+  min-height: 50px;
+  background: var(--bg-1);
+  position: relative;
+  cursor: pointer;
+}
+.timeline canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.timeline-resize-handle {
+  height: 4px;
+  min-height: 4px;
+  background: var(--border);
+  cursor: ns-resize;
+  user-select: none;
+  position: relative;
+}
+.timeline-resize-handle:hover,
+.timeline-resize-handle.dragging {
+  background: var(--accent);
+}
+.timeline-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-2);
+  font-size: 11px;
+}
+
+/* ── Icicle ──────────────────────────────────────── */
+.icicle-pane {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-0);
+}
+.icicle-pane canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.breadcrumb-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 22px;
+  background: rgba(6,6,6,0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 10px;
+  color: var(--text-2);
+  gap: 4px;
+  z-index: 2;
+  pointer-events: none;
+}
+.breadcrumb-bar span { pointer-events: auto; }
+.breadcrumb-bar .bc-link { color: var(--accent); cursor: pointer; }
+.breadcrumb-bar .bc-link:hover { text-decoration: underline; }
+.breadcrumb-bar .bc-sep { color: var(--text-2); }
+.breadcrumb-bar .bc-current { color: var(--text-0); font-weight: 500; }
+
+/* ── Detail panel ────────────────────────────────── */
+.detail-resize-handle {
+  height: 4px;
+  min-height: 4px;
+  background: var(--border);
+  cursor: ns-resize;
+  user-select: none;
+  display: none;
+  position: relative;
+}
+.detail-resize-handle:hover,
+.detail-resize-handle.dragging {
+  background: var(--accent);
+}
+.detail-resize-handle.visible { display: block; }
+.detail-panel {
+  height: 0;
+  min-height: 0;
+  background: var(--bg-1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  padding: 0;
+}
+.detail-panel.open {
+  height: 220px;
+  min-height: 80px;
+}
+.detail-left {
+  width: 280px;
+  min-width: 200px;
+  max-width: 400px;
+  overflow-y: auto;
+  padding: 10px 14px;
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.detail-left::-webkit-scrollbar { width: 4px; background: var(--bg-1); }
+.detail-left::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 2px; }
+.detail-left::-webkit-scrollbar-thumb:hover { background: var(--text-2); }
+.detail-right {
+  flex: 1;
+  overflow: auto;
+  padding: 8px 12px;
+  min-width: 0;
+}
+.detail-right::-webkit-scrollbar { width: 4px; height: 4px; background: var(--bg-1); }
+.detail-right::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 2px; }
+.detail-right::-webkit-scrollbar-thumb:hover { background: var(--text-2); }
+.detail-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+.detail-cell:last-child { margin-bottom: 0; }
+.detail-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-2);
+}
+.detail-value {
+  font-size: 12px;
+  color: var(--text-0);
+  word-break: break-all;
+}
+.detail-value.mono { font-size: 11px; }
+.detail-tag {
+  display: inline-block;
+  font-size: 10px;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--bg-3);
+  color: var(--text-1);
+  margin-right: 4px;
+}
+
+/* ── JSON tree viewer ────────────────────────────── */
+.json-tree { font-size: 11px; line-height: 1.6; white-space: pre; }
+.json-key { color: #79c0ff; }
+.json-str { color: #a5d6ff; }
+.json-num { color: #d2a8ff; }
+.json-bool { color: #ff7b72; }
+.json-null { color: #8b949e; }
+.json-bracket { color: #8b949e; }
+.json-toggle {
+  display: inline-block;
+  width: 14px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--text-2);
+  text-align: center;
+}
+.json-toggle:hover { color: var(--accent); }
+.json-collapsed-hint { color: var(--text-2); font-style: italic; font-size: 10px; }
+.json-line { min-height: 18px; }
+.json-line:hover { background: rgba(255,255,255,0.03); }
+
+/* ── Tooltip ─────────────────────────────────────── */
+.tooltip {
+  position: fixed;
+  pointer-events: none;
+  z-index: 100;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  line-height: 1.6;
+  max-width: 340px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+  display: none;
+}
+.tooltip .tt-name { font-weight: 600; color: var(--text-0); margin-bottom: 2px; }
+.tooltip .tt-row { color: var(--text-1); }
+.tooltip .tt-val { color: var(--text-0); font-weight: 500; }
+.tooltip .tt-pct { color: var(--accent); }
+
+/* ── Role filter chips ─────────────────────────────── */
+.role-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 12px;
+  background: var(--bg-0);
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+}
+.role-filter-bar .label { color: var(--text-2); margin-right: 2px; }
+.role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: #fff;
+  opacity: 0.75;
+  transition: opacity 0.15s, border-color 0.15s;
+}
+.role-chip:hover { opacity: 1; }
+.role-chip.active { opacity: 1; border-color: #fff; }
+.role-chip .chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* ── Tool Analysis view ─────────────────────────── */
+.tools-pane {
+  flex: 1;
+  display: none;
+  flex-direction: row;
+  overflow: hidden;
+  background: var(--bg-0);
+}
+.tools-pane.visible { display: flex; }
+.tools-left {
+  width: 40%;
+  min-width: 200px;
+  overflow: hidden;
+  border-right: none;
+  display: flex;
+  flex-direction: column;
+}
+.tools-resize-handle {
+  width: 5px;
+  cursor: ew-resize;
+  background: var(--border);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.tools-resize-handle:hover,
+.tools-resize-handle.dragging {
+  background: var(--accent);
+}
+.tools-left canvas {
+  display: block;
+  width: 100%;
+  flex: 1;
+}
+.tools-right {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.tools-detail-html {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: #e0e0e0;
+}
+.tools-detail-html::-webkit-scrollbar { width: 6px; }
+.tools-detail-html::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+.tools-detail-html .td-empty {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; color: #666; font-size: 12px;
+}
+.tools-detail-html .td-title {
+  font-weight: bold; font-size: 14px; margin-bottom: 12px;
+}
+.tools-detail-html .td-stats {
+  display: grid; grid-template-columns: auto auto auto; gap: 2px 16px;
+  margin-bottom: 12px; line-height: 1.6;
+}
+.tools-detail-html .td-stats .label { color: #888; }
+.tools-detail-html .td-stats .extra { color: #666; }
+.tools-detail-html .td-sep {
+  border: none; border-top: 1px solid #2a2a2a; margin: 12px 0;
+}
+.tools-detail-html .td-inv {
+  margin: 0;
+}
+.tools-detail-html .td-inv-header {
+  display: grid; grid-template-columns: 50px 80px 90px 70px 1fr 20px;
+  align-items: center; gap: 0;
+  padding: 0 10px; height: 22px;
+  cursor: pointer; user-select: none;
+  font-size: 11px;
+}
+.tools-detail-html .td-inv-header:hover { background: rgba(255,255,255,0.04); }
+.tools-detail-html .td-inv.open > .td-inv-header { background: rgba(91,155,245,0.1); }
+.tools-detail-html .td-inv-header .idx { color: #a0a0a0; }
+.tools-detail-html .td-inv-header .tok { font-size: 11px; }
+.tools-detail-html .td-inv-header .arrow { color: #666; font-size: 8px; text-align: right; transition: transform 0.15s; }
+.tools-detail-html .td-inv-header .mini-bar {
+  display: flex; height: 10px; border-radius: 1px; overflow: hidden;
+}
+.tools-detail-html .td-inv-body { display: none; border-top: 1px solid #1a1a1a; }
+.tools-detail-html .td-inv.open .td-inv-body { display: block; }
+.tools-detail-html .td-inv.open .arrow { transform: rotate(90deg); }
+.tools-detail-html .td-inv + .td-inv {
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+.tools-detail-html .td-tbl-header {
+  display: grid; grid-template-columns: 50px 80px 90px 70px 1fr 20px;
+  align-items: center; gap: 0;
+  padding: 0 10px; height: 18px;
+  font-size: 10px; font-weight: bold; color: #888;
+}
+.tools-detail-html .td-raw-label {
+  font-size: 9px; font-weight: bold; color: #666;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 6px 10px 2px; background: #0a0a0a;
+}
+.tools-detail-html .td-raw {
+  padding: 8px 10px; background: #0a0a0a;
+  white-space: pre-wrap; word-break: break-all;
+  color: #b0b0b0; font-size: 10px; line-height: 1.5;
+  max-height: 300px; overflow-y: auto;
+}
+.tools-detail-html .td-raw::-webkit-scrollbar { width: 4px; }
+.tools-detail-html .td-raw::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+.tools-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+  font-size: 12px;
+}
+
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="toolbar-title">context-profiler</span>
+  <div class="toolbar-sep"></div>
+  <span class="toolbar-badge" id="mode-badge"></span>
+  <span class="toolbar-badge" id="call-badge"></span>
+  <div class="toolbar-right">
+    <span style="font-size:10px;color:var(--text-2);">View:</span>
+    <button class="toolbar-btn active" data-view="icicle">Icicle</button>
+    <button class="toolbar-btn" data-view="tools">Tools</button>
+    <div class="toolbar-sep"></div>
+    <span style="font-size:10px;color:var(--text-2);">Color:</span>
+    <button class="toolbar-btn active" data-scheme="role">Semantic</button>
+    <button class="toolbar-btn" data-scheme="diff">Diff</button>
+  </div>
+</div>
+
+<div class="role-filter-bar" id="role-filter-bar">
+  <span class="label">Filter:</span>
+</div>
+
+<div class="timeline" id="timeline">
+  <canvas id="timeline-canvas"></canvas>
+</div>
+<div class="timeline-resize-handle" id="timeline-resize-handle"></div>
+
+<div class="icicle-pane" id="icicle-pane">
+  <canvas id="icicle-canvas"></canvas>
+  <div class="breadcrumb-bar" id="breadcrumb"></div>
+</div>
+
+<div class="tools-pane" id="tools-pane">
+  <div class="tools-left" id="tools-left">
+    <canvas id="tools-table-canvas"></canvas>
+  </div>
+  <div class="tools-resize-handle" id="tools-resize-handle"></div>
+  <div class="tools-right" id="tools-right">
+    <div class="tools-detail-html" id="tools-detail-html"></div>
+  </div>
+</div>
+
+<div class="detail-resize-handle" id="detail-resize-handle"></div>
+<div class="detail-panel" id="detail-panel">
+  <div class="detail-left" id="detail-left"></div>
+  <div class="detail-right" id="detail-right"></div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   DATA INJECTION
+   ════════════════════════════════════════════════════ */
+const DATA = /*__DATA__*/null;
+if (!DATA) {
+  document.body.innerHTML = '<p style="padding:40px;color:#f85149;font-family:monospace;">No data loaded.</p>';
+  throw new Error('No data');
+}
+
+const { metrics, icicle, timeline, session_trees, warnings, tool_analysis } = DATA;
+
+/* ════════════════════════════════════════════════════
+   HELPERS
+   ════════════════════════════════════════════════════ */
+function fmtK(n) {
+  if (n == null) return '0';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return String(n);
+}
+function fmtPct(n, total) {
+  if (!total) return '0%';
+  return ((n / total) * 100).toFixed(1) + '%';
+}
+function escHtml(s) {
+  if (!s) return '';
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+const ROLE_COLORS = {
+  system: '#484f58', msg_system: '#484f58',
+  msg_user: '#1f6feb', msg_assistant: '#238636', msg_tool: '#8957e5',
+  tool_use: '#da6d28', tool_result: '#2ea043', tool_def: '#6e4a1e',
+  tool_defs: '#5a3e1e', text: '#388bfd', field: '#9e6a03',
+  messages: '#30363d', root: '#21262d',
+  history_group: '#6e7681', new_group: '#2ea043',
+  removed_group: '#f85149',
+};
+const DIFF_COLORS = {
+  unchanged: '#6e7681',
+  added: '#2ea043',
+  removed: '#f85149',
+  modified: '#d29922',
+  context: '#30363d',
+};
+
+let colorScheme = 'role';
+let roleFilter = null;  /* null = no filter, or 'msg_system' | 'msg_user' | 'msg_assistant' | 'msg_tool' | ... */
+let currentView = 'icicle'; /* 'icicle' | 'tools' */
+
+function nodeMatchesFilter(node) {
+  if (!roleFilter) return true;
+  if (node.type === roleFilter) return true;
+  /* Check descendants */
+  if (node.children) {
+    for (const c of node.children) {
+      if (nodeMatchesFilter(c)) return true;
+    }
+  }
+  return false;
+}
+
+function nodeColor(node) {
+  if (colorScheme === 'diff' && node.diff) {
+    return DIFF_COLORS[node.diff] || DIFF_COLORS.context;
+  }
+  return ROLE_COLORS[node.type] || '#30363d';
+}
+
+/* ════════════════════════════════════════════════════
+   STATE
+   ════════════════════════════════════════════════════ */
+let currentRound = -1;
+let currentTree = null;
+
+/* Icicle state */
+let icicleHierarchy = null;  /* { root, nodes, maxDepth } */
+let icicleHovered = null;
+let icicleSelected = null;
+
+/* Viewport in config space: y0/y1 = token fraction [0,1] — X (depth) is fixed */
+let viewport = { y0: 0, y1: 1 };
+
+/* DPR */
+const dpr = window.devicePixelRatio || 1;
+
+/* ════════════════════════════════════════════════════
+   D3-LIKE HIERARCHY + PARTITION (no D3 dependency)
+   ════════════════════════════════════════════════════ */
+function buildHierarchy(tree) {
+  const hideRemoved = colorScheme !== 'diff';
+
+  /* Assign depth and compute sum of leaf tokens */
+  function walk(node, depth) {
+    node._depth = depth;
+    const kids = (node.children || []).filter(c => !(hideRemoved && c.type === 'removed_group'));
+    if (kids.length > 0) {
+      node._sumTokens = 0;
+      for (const c of kids) {
+        walk(c, depth + 1);
+        node._sumTokens += c._sumTokens;
+      }
+      if (node._sumTokens === 0) node._sumTokens = node.tokens || 0;
+    } else {
+      node._sumTokens = node.tokens || 0;
+    }
+    node._visibleChildren = kids;
+  }
+  walk(tree, 0);
+
+  /* Partition layout: vertical icicle
+     x0,x1 = horizontal position (fraction of width) based on token proportion
+     y0,y1 = vertical position based on depth (each level = fixed height) */
+  const nodes = [];
+  const LEVEL_H = 1; /* will be scaled later */
+
+  function layout(node, x0, x1) {
+    node._x0 = x0;
+    node._x1 = x1;
+    node._y0 = node._depth * LEVEL_H;
+    node._y1 = (node._depth + 1) * LEVEL_H;
+    nodes.push(node);
+
+    const kids = node._visibleChildren || [];
+    if (kids.length > 0 && node._sumTokens > 0) {
+      let cx = x0;
+      for (const c of kids) {
+        const frac = c._sumTokens / node._sumTokens;
+        const cw = frac * (x1 - x0);
+        layout(c, cx, cx + cw);
+        cx += cw;
+      }
+    }
+  }
+  layout(tree, 0, 1);
+  return { root: tree, nodes, maxDepth: Math.max(...nodes.map(n => n._depth)) + 1 };
+}
+
+/* ════════════════════════════════════════════════════
+   TIMELINE RENDERING (Canvas)
+   ════════════════════════════════════════════════════ */
+const tlCanvas = document.getElementById('timeline-canvas');
+const tlCtx = tlCanvas.getContext('2d');
+const tlEl = document.getElementById('timeline');
+
+function resizeTimeline() {
+  const rect = tlEl.getBoundingClientRect();
+  tlCanvas.width = rect.width * dpr;
+  tlCanvas.height = rect.height * dpr;
+}
+
+function renderTimeline() {
+  resizeTimeline();
+  const W = tlCanvas.width;
+  const H = tlCanvas.height;
+  const ctx = tlCtx;
+  ctx.clearRect(0, 0, W, H);
+
+  if (timeline.length < 2) {
+    ctx.font = `${11 * dpr}px 'IBM Plex Mono', monospace`;
+    ctx.fillStyle = '#666';
+    ctx.textAlign = 'center';
+    ctx.fillText('Single request — no timeline', W / 2, H / 2);
+    return;
+  }
+
+  const hasTurns = (DATA.turn_boundaries || []).length > 1;
+  const pad = { top: (hasTurns ? 18 : 6) * dpr, bottom: 16 * dpr, left: 40 * dpr, right: 16 * dpr };
+  const chartW = W - pad.left - pad.right;
+  const chartH = H - pad.top - pad.bottom;
+  const n = timeline.length;
+  const barW = chartW / n;
+  const gap = Math.max(1, barW * 0.15);
+  const bw = barW - gap;
+  const yMax = Math.max(...timeline.map(d => d.total_tokens)) * 1.05 || 1;
+
+  /* Stacked bars */
+  const stackKeys = ['system_tokens', 'tool_def_tokens'];
+  const stackColors = ['#484f58', '#6e4a1e'];
+  const msgColor = '#388bfd';
+
+  for (let i = 0; i < n; i++) {
+    const d = timeline[i];
+    const x = pad.left + i * barW + gap / 2;
+    const total = d.total_tokens || 0;
+    const sys = d.system_tokens || 0;
+    const tools = d.tool_def_tokens || 0;
+    const msg = Math.max(0, total - sys - tools);
+    const segments = [
+      { val: sys, color: stackColors[0] },
+      { val: tools, color: stackColors[1] },
+      { val: msg, color: msgColor },
+    ];
+    let base = 0;
+    for (const seg of segments) {
+      const sh = (seg.val / yMax) * chartH;
+      const sy = pad.top + chartH - base - sh;
+      ctx.fillStyle = seg.color;
+      ctx.fillRect(x, sy, bw, sh);
+      base += sh;
+    }
+
+    /* Highlight current round */
+    if (d.request_index === currentRound) {
+      ctx.strokeStyle = '#5b9bf5';
+      ctx.lineWidth = 2 * dpr;
+      const totalH = (total / yMax) * chartH;
+      ctx.strokeRect(x - 1, pad.top + chartH - totalH - 1, bw + 2, totalH + 2);
+    }
+  }
+
+  /* Y axis labels */
+  ctx.font = `${9 * dpr}px 'IBM Plex Mono', monospace`;
+  ctx.fillStyle = '#666';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  const yTicks = [0, 0.25, 0.5, 0.75, 1];
+  for (const t of yTicks) {
+    const val = yMax * t;
+    const y = pad.top + chartH * (1 - t);
+    ctx.fillText(fmtK(Math.round(val)), pad.left - 4 * dpr, y);
+    /* Grid line */
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(W - pad.right, y);
+    ctx.stroke();
+  }
+
+  /* X axis: show every Nth label */
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  const step = Math.max(1, Math.floor(n / 15));
+  for (let i = 0; i < n; i += step) {
+    const x = pad.left + i * barW + barW / 2;
+    ctx.fillStyle = '#666';
+    ctx.fillText(`#${timeline[i].request_index}`, x, pad.top + chartH + 3 * dpr);
+  }
+
+  /* Turn boundary separators */
+  const boundaries = DATA.turn_boundaries || [];
+  for (let b = 1; b < boundaries.length; b++) {
+    const boundaryReqIdx = boundaries[b];
+    /* Find the timeline index for this request_index */
+    const tlIdx = timeline.findIndex(d => d.request_index === boundaryReqIdx);
+    if (tlIdx < 0) continue;
+    const x = pad.left + tlIdx * barW;
+    /* Dashed vertical line */
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.setLineDash([4 * dpr, 3 * dpr]);
+    ctx.beginPath();
+    ctx.moveTo(x, pad.top);
+    ctx.lineTo(x, pad.top + chartH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    /* Turn label */
+    ctx.font = `${8 * dpr}px 'IBM Plex Mono', monospace`;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(`Turn ${b + 1}`, x, pad.top - 1 * dpr);
+  }
+  /* Turn 1 label at start */
+  if (boundaries.length > 1) {
+    ctx.font = `${8 * dpr}px 'IBM Plex Mono', monospace`;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('Turn 1', pad.left + 2 * dpr, pad.top - 1 * dpr);
+  }
+}
+
+/* Timeline hit test */
+function timelineHitIndex(clientX) {
+  const rect = tlEl.getBoundingClientRect();
+  const pad = { left: 40, right: 16 };
+  const chartW = rect.width - pad.left - pad.right;
+  const x = clientX - rect.left - pad.left;
+  const n = timeline.length;
+  const idx = Math.floor((x / chartW) * n);
+  return clamp(idx, 0, n - 1);
+}
+
+/* ════════════════════════════════════════════════════
+   ICICLE RENDERING (Canvas) — VERTICAL layout
+   X = depth (root left, children right, fixed column width)
+   Y = token proportion (zoomable via viewport)
+   ════════════════════════════════════════════════════ */
+const icCanvas = document.getElementById('icicle-canvas');
+const icCtx = icCanvas.getContext('2d');
+const icPane = document.getElementById('icicle-pane');
+
+let icW = 0, icH = 0;
+const BREADCRUMB_H = 22;
+const COL_PAD = 12;
+const COL_MIN = 50;
+const COL_MAX = 220;
+
+let colWidths = [];
+let colOffsets = [];
+
+function computeColWidths() {
+  colWidths = [];
+  colOffsets = [];
+  if (!icicleHierarchy) return;
+
+  const { nodes, maxDepth } = icicleHierarchy;
+  const canvas = document.createElement('canvas');
+  const mCtx = canvas.getContext('2d');
+  mCtx.font = "11px 'IBM Plex Mono', monospace";
+
+  const maxW = new Array(maxDepth).fill(0);
+  for (const node of nodes) {
+    const d = node._depth;
+    const name = node.name || '';
+    const tok = fmtK(node.tokens);
+    const w = Math.max(mCtx.measureText(name).width, mCtx.measureText(tok).width);
+    if (w > maxW[d]) maxW[d] = w;
+  }
+
+  let x = 0;
+  for (let d = 0; d < maxDepth; d++) {
+    const w = clamp(maxW[d] + COL_PAD, COL_MIN, COL_MAX);
+    colWidths.push(w);
+    colOffsets.push(x);
+    x += w;
+  }
+}
+
+function colX(depth) { return colOffsets[depth] || 0; }
+function colWidth(depth) { return colWidths[depth] || COL_MIN; }
+
+function resizeIcicle() {
+  const rect = icPane.getBoundingClientRect();
+  icW = rect.width;
+  icH = rect.height;
+  icCanvas.width = icW * dpr;
+  icCanvas.height = icH * dpr;
+}
+
+function fitViewport() {
+  viewport = { y0: 0, y1: 1 };
+}
+
+function zoomToNode(node) {
+  const pad = 0.02 * (node._x1 - node._x0);
+  viewport.y0 = node._x0 - pad;
+  viewport.y1 = node._x1 + pad;
+  clampViewport();
+  requestRender();
+}
+
+/* Config space (token fraction) → screen Y */
+function cfgToScreenY(cy) {
+  const vh = viewport.y1 - viewport.y0 || 1;
+  const availH = icH - BREADCRUMB_H;
+  return BREADCRUMB_H + ((cy - viewport.y0) / vh) * availH;
+}
+function screenToCfgY(sy) {
+  const vh = viewport.y1 - viewport.y0 || 1;
+  const availH = icH - BREADCRUMB_H;
+  return viewport.y0 + ((sy - BREADCRUMB_H) / availH) * vh;
+}
+
+let renderRAF = null;
+function requestRender() {
+  if (renderRAF) return;
+  renderRAF = requestAnimationFrame(() => {
+    renderRAF = null;
+    renderIcicle();
+  });
+}
+
+/* Clamp viewport so it never exceeds [0,1] and never zooms out past full view */
+function clampViewport() {
+  const vh = viewport.y1 - viewport.y0;
+  /* Don't allow zooming out beyond the full range */
+  if (vh >= 1) {
+    viewport.y0 = 0;
+    viewport.y1 = 1;
+    return;
+  }
+  /* Don't allow panning past edges */
+  if (viewport.y0 < 0) {
+    viewport.y0 = 0;
+    viewport.y1 = vh;
+  }
+  if (viewport.y1 > 1) {
+    viewport.y1 = 1;
+    viewport.y0 = 1 - vh;
+  }
+}
+
+function renderIcicle() {
+  if (!icicleHierarchy) return;
+  resizeIcicle();
+  const ctx = icCtx;
+  ctx.clearRect(0, 0, icCanvas.width, icCanvas.height);
+  ctx.save();
+  ctx.scale(dpr, dpr);
+
+  const { nodes } = icicleHierarchy;
+  const vy0 = viewport.y0, vy1 = viewport.y1;
+  const vh = vy1 - vy0 || 1;
+  const availH = icH - BREADCRUMB_H;
+  const PAD = 0.5;
+
+  for (const node of nodes) {
+    const ny0 = node._x0, ny1 = node._x1;
+    if (ny1 < vy0 || ny0 > vy1) continue;
+
+    const sx = colX(node._depth);
+    const cw = colWidth(node._depth);
+    const sy = BREADCRUMB_H + ((ny0 - vy0) / vh) * availH;
+    const sh = ((ny1 - ny0) / vh) * availH;
+
+    if (sx > icW || sx + cw < 0 || sy > icH || sy + sh < BREADCRUMB_H || sh < 0.3) continue;
+
+    /* Hide removed_group nodes when not in diff mode */
+    if (node.type === 'removed_group' && colorScheme !== 'diff') continue;
+
+    const rw = cw - PAD;
+    const rh = Math.max(0, sh - PAD);
+
+    /* Fill */
+    const isHovered = node === icicleHovered;
+    const isSelected = node === icicleSelected;
+    const matchesFilter = colorScheme === 'diff'
+      ? nodeMatchesDiffFilter(node)
+      : nodeMatchesFilter(node);
+    const hasActiveFilter = colorScheme === 'diff' ? !!diffFilter : !!roleFilter;
+    ctx.fillStyle = nodeColor(node);
+    ctx.globalAlpha = hasActiveFilter
+      ? (matchesFilter ? (isHovered ? 1 : 0.9) : 0.12)
+      : (isHovered ? 1 : 0.85);
+    ctx.fillRect(sx, sy, rw, rh);
+
+    /* Hover/select highlight */
+    if (isHovered || isSelected) {
+      ctx.strokeStyle = isSelected ? '#fff' : '#5b9bf5';
+      ctx.lineWidth = isSelected ? 2 : 1.5;
+      ctx.strokeRect(sx + 0.5, sy + 0.5, rw - 1, rh - 1);
+    }
+
+    /* Label — render if rect is wide enough and has some height */
+    ctx.globalAlpha = 1;
+    if (rw > 30 && rh > 8) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(sx, sy, rw, rh);
+      ctx.clip();
+
+      /* Adaptive font size based on available height */
+      const fontSize = rh < 16 ? 9 : 11;
+      const lineH = fontSize + 2;
+      ctx.font = `${fontSize}px 'IBM Plex Mono', monospace`;
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'left';
+
+      const name = node.name || '';
+      const tok = fmtK(node.tokens);
+      const maxTextW = rw - 6;
+      const charW = fontSize * 0.6;
+      const charsPerLine = Math.floor(maxTextW / charW);
+      const maxLines = Math.max(1, Math.floor(rh / lineH));
+
+      if (charsPerLine >= 2) {
+        if (maxLines === 1) {
+          /* Single line: name truncated, centered vertically */
+          const nameTrunc = name.length <= charsPerLine ? name : name.slice(0, charsPerLine - 1) + '…';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(nameTrunc, sx + 3, sy + rh / 2);
+        } else {
+          /* Multi-line: wrap name, then show token count */
+          ctx.textBaseline = 'top';
+          const lines = [];
+          let remaining = name;
+          const nameLineMax = maxLines >= 3 ? maxLines - 1 : maxLines;
+
+          while (remaining.length > 0 && lines.length < nameLineMax) {
+            if (remaining.length <= charsPerLine) {
+              lines.push(remaining);
+              remaining = '';
+            } else if (lines.length === nameLineMax - 1) {
+              lines.push(remaining.slice(0, charsPerLine - 1) + '…');
+              remaining = '';
+            } else {
+              lines.push(remaining.slice(0, charsPerLine));
+              remaining = remaining.slice(charsPerLine);
+            }
+          }
+
+          let ty = sy + 2;
+          for (const line of lines) {
+            ctx.fillStyle = '#fff';
+            ctx.fillText(line, sx + 3, ty);
+            ty += lineH;
+          }
+
+          if (ty + lineH <= sy + rh + 2) {
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.fillText(tok, sx + 3, ty);
+          }
+        }
+      }
+
+      ctx.restore();
+    }
+  }
+
+  ctx.restore();
+}
+
+/* Icicle hit test */
+function icicleHitTest(clientX, clientY) {
+  if (!icicleHierarchy) return null;
+  const rect = icPane.getBoundingClientRect();
+  const mx = clientX - rect.left;
+  const my = clientY - rect.top;
+
+  const { nodes } = icicleHierarchy;
+  const vy0 = viewport.y0, vy1 = viewport.y1;
+  const vh = vy1 - vy0 || 1;
+  const availH = icH - BREADCRUMB_H;
+
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const node = nodes[i];
+    const sx = colX(node._depth);
+    const cw = colWidth(node._depth);
+    const sy = BREADCRUMB_H + ((node._x0 - vy0) / vh) * availH;
+    const sh = ((node._x1 - node._x0) / vh) * availH;
+
+    if (mx >= sx && mx <= sx + cw && my >= sy && my <= sy + sh) {
+      if (node.type === 'removed_group' && colorScheme !== 'diff') continue;
+      return node;
+    }
+  }
+  return null;
+}
+
+/* ════════════════════════════════════════════════════
+   BREADCRUMB — shows selected node path
+   ════════════════════════════════════════════════════ */
+const breadcrumbEl = document.getElementById('breadcrumb');
+const parentMap = new Map();
+
+function buildParentMap() {
+  parentMap.clear();
+  if (!icicleHierarchy) return;
+  for (const node of icicleHierarchy.nodes) {
+    if (node.children) {
+      for (const c of node.children) parentMap.set(c, node);
+    }
+  }
+}
+
+function renderBreadcrumb() {
+  if (!icicleSelected) {
+    breadcrumbEl.innerHTML = '<span class="bc-current">scroll to zoom · drag to pan · click to select · dblclick to focus</span>';
+    return;
+  }
+
+  const path = [];
+  let cur = icicleSelected;
+  while (cur) { path.unshift(cur); cur = parentMap.get(cur); }
+
+  breadcrumbEl.innerHTML = path.map((node, i) => {
+    if (i === path.length - 1) {
+      return `<span class="bc-current">${escHtml(node.name || 'root')}</span>`;
+    }
+    return `<span class="bc-link" data-idx="${i}">${escHtml(node.name || 'root')}</span><span class="bc-sep"> › </span>`;
+  }).join('');
+
+  breadcrumbEl.querySelectorAll('.bc-link').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.idx);
+      zoomToNode(path[idx]);
+    });
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   TOOLTIP
+   ════════════════════════════════════════════════════ */
+const tooltipEl = document.getElementById('tooltip');
+
+function showTooltip(ev, node) {
+  if (!node) { tooltipEl.style.display = 'none'; return; }
+
+  const rootTokens = currentTree ? currentTree.tokens || currentTree._sumTokens : 0;
+  let html = `<div class="tt-name">${escHtml(node.name)}</div>`;
+  html += `<div class="tt-row">Tokens: <span class="tt-val">${fmtK(node.tokens)}</span>`;
+  if (rootTokens > 0) {
+    html += ` <span class="tt-pct">(${fmtPct(node.tokens, rootTokens)})</span>`;
+  }
+  html += '</div>';
+  html += `<div class="tt-row">Type: <span class="tt-val">${node.type}</span></div>`;
+  if (node.role) html += `<div class="tt-row">Role: <span class="tt-val">${node.role}</span></div>`;
+  if (node.tool_name) html += `<div class="tt-row">Tool: <span class="tt-val">${node.tool_name}</span></div>`;
+  if (node.children && node.children.length > 0) {
+    html += `<div class="tt-row" style="color:#666;font-size:10px;">Click to zoom in</div>`;
+  }
+  tooltipEl.innerHTML = html;
+  tooltipEl.style.display = 'block';
+  moveTooltip(ev);
+}
+
+function moveTooltip(ev) {
+  const pad = 12;
+  let left = ev.clientX + pad;
+  let top = ev.clientY + pad;
+  if (left + 340 > window.innerWidth) left = ev.clientX - 340 - pad;
+  if (top + 160 > window.innerHeight) top = ev.clientY - 160;
+  tooltipEl.style.left = left + 'px';
+  tooltipEl.style.top = top + 'px';
+}
+
+/* ════════════════════════════════════════════════════
+   TIMELINE RESIZE
+   ════════════════════════════════════════════════════ */
+const tlResizeHandle = document.getElementById('timeline-resize-handle');
+let tlResizeDragging = false;
+let tlResizeStartY = 0;
+let tlResizeStartH = 0;
+
+tlResizeHandle.addEventListener('mousedown', (ev) => {
+  ev.preventDefault();
+  tlResizeDragging = true;
+  tlResizeStartY = ev.clientY;
+  tlResizeStartH = tlEl.getBoundingClientRect().height;
+  tlResizeHandle.classList.add('dragging');
+  document.body.style.cursor = 'ns-resize';
+  document.body.style.userSelect = 'none';
+});
+
+document.addEventListener('mousemove', (ev) => {
+  if (!tlResizeDragging) return;
+  const dy = ev.clientY - tlResizeStartY;
+  const newH = clamp(tlResizeStartH + dy, 50, window.innerHeight * 0.5);
+  tlEl.style.height = newH + 'px';
+  renderTimeline();
+});
+
+document.addEventListener('mouseup', () => {
+  if (!tlResizeDragging) return;
+  tlResizeDragging = false;
+  tlResizeHandle.classList.remove('dragging');
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  requestRender();
+});
+
+/* ════════════════════════════════════════════════════
+   DETAIL PANEL
+   ════════════════════════════════════════════════════ */
+const detailPanel = document.getElementById('detail-panel');
+const detailLeft = document.getElementById('detail-left');
+const detailRight = document.getElementById('detail-right');
+const detailResizeHandle = document.getElementById('detail-resize-handle');
+
+/* ── JSON tree renderer ── */
+function renderJsonTree(obj, indent) {
+  indent = indent || 0;
+  const pad = '  '.repeat(indent);
+  const lines = [];
+
+  if (obj === null || obj === undefined) {
+    lines.push(`<span class="json-line">${pad}<span class="json-null">null</span></span>`);
+  } else if (typeof obj === 'string') {
+    const escaped = escHtml(obj).replace(/\n/g, '\\n');
+    const display = escaped.length > 200 ? escaped.slice(0, 200) + '…' : escaped;
+    lines.push(`<span class="json-line">${pad}<span class="json-str">"${display}"</span></span>`);
+  } else if (typeof obj === 'number') {
+    lines.push(`<span class="json-line">${pad}<span class="json-num">${obj}</span></span>`);
+  } else if (typeof obj === 'boolean') {
+    lines.push(`<span class="json-line">${pad}<span class="json-bool">${obj}</span></span>`);
+  } else if (Array.isArray(obj)) {
+    if (obj.length === 0) {
+      lines.push(`<span class="json-line">${pad}<span class="json-bracket">[]</span></span>`);
+    } else {
+      const id = 'jt_' + Math.random().toString(36).slice(2, 9);
+      lines.push(`<span class="json-line">${pad}<span class="json-toggle" data-target="${id}" data-state="open">▼</span><span class="json-bracket">[</span> <span class="json-collapsed-hint" id="${id}_hint" style="display:none">${obj.length} items…</span></span>`);
+      lines.push(`<span id="${id}">`);
+      for (let i = 0; i < obj.length; i++) {
+        const childLines = renderJsonTree(obj[i], indent + 1);
+        const suffix = i < obj.length - 1 ? ',' : '';
+        lines.push(childLines + suffix);
+      }
+      lines.push(`</span>`);
+      lines.push(`<span class="json-line">${pad}<span class="json-bracket">]</span></span>`);
+    }
+  } else if (typeof obj === 'object') {
+    const keys = Object.keys(obj);
+    if (keys.length === 0) {
+      lines.push(`<span class="json-line">${pad}<span class="json-bracket">{}</span></span>`);
+    } else {
+      const id = 'jt_' + Math.random().toString(36).slice(2, 9);
+      lines.push(`<span class="json-line">${pad}<span class="json-toggle" data-target="${id}" data-state="open">▼</span><span class="json-bracket">{</span> <span class="json-collapsed-hint" id="${id}_hint" style="display:none">${keys.length} keys…</span></span>`);
+      lines.push(`<span id="${id}">`);
+      for (let i = 0; i < keys.length; i++) {
+        const k = keys[i];
+        const innerPad = '  '.repeat(indent + 1);
+        const valLines = renderJsonTree(obj[k], indent + 1);
+        /* Replace leading pad of first line with key prefix */
+        const firstLineContent = valLines.replace(new RegExp(`^<span class="json-line">${'  '.repeat(indent + 1)}`), `<span class="json-line">${innerPad}<span class="json-key">"${escHtml(k)}"</span>: `);
+        const suffix = i < keys.length - 1 ? ',' : '';
+        lines.push(firstLineContent + suffix);
+      }
+      lines.push(`</span>`);
+      lines.push(`<span class="json-line">${pad}<span class="json-bracket">}</span></span>`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+function buildNodeRawJson(node) {
+  /* Reconstruct original content from the profiled tree.
+     Leaf nodes have 'content' with the raw text/value.
+     Branch nodes represent dicts/arrays — rebuild from children. */
+
+  /* Leaf: return the raw content directly */
+  if (!node.children || node.children.length === 0) {
+    if (node.content != null && node.content !== '') {
+      /* Try to parse as JSON to show structured data */
+      try { return JSON.parse(node.content); } catch(e) {}
+      return node.content;
+    }
+    return null;
+  }
+
+  /* Check if children look like array items (names are [0], [1], etc. or start with [) */
+  const firstChild = node.children[0];
+  const looksLikeArray = firstChild && /^\[\d+\]/.test(firstChild.name);
+
+  if (looksLikeArray) {
+    return node.children.map(c => buildNodeRawJson(c));
+  }
+
+  /* Otherwise reconstruct as object */
+  const obj = {};
+  for (const child of node.children) {
+    obj[child.name] = buildNodeRawJson(child);
+  }
+  return obj;
+}
+
+function initJsonToggle(container) {
+  container.addEventListener('click', (ev) => {
+    const toggle = ev.target.closest('.json-toggle');
+    if (!toggle) return;
+    const targetId = toggle.dataset.target;
+    const targetEl = document.getElementById(targetId);
+    const hintEl = document.getElementById(targetId + '_hint');
+    if (!targetEl) return;
+    const isOpen = toggle.dataset.state === 'open';
+    if (isOpen) {
+      targetEl.style.display = 'none';
+      if (hintEl) hintEl.style.display = 'inline';
+      toggle.textContent = '▶';
+      toggle.dataset.state = 'closed';
+    } else {
+      targetEl.style.display = '';
+      if (hintEl) hintEl.style.display = 'none';
+      toggle.textContent = '▼';
+      toggle.dataset.state = 'open';
+    }
+  });
+}
+
+/* ── Resize handle ── */
+let detailHeight = 220;
+let resizeDragging = false;
+let resizeStartY = 0;
+let resizeStartH = 0;
+
+detailResizeHandle.addEventListener('mousedown', (ev) => {
+  ev.preventDefault();
+  resizeDragging = true;
+  resizeStartY = ev.clientY;
+  resizeStartH = detailPanel.getBoundingClientRect().height;
+  detailResizeHandle.classList.add('dragging');
+  document.body.style.cursor = 'ns-resize';
+  document.body.style.userSelect = 'none';
+});
+
+document.addEventListener('mousemove', (ev) => {
+  if (!resizeDragging) return;
+  const dy = resizeStartY - ev.clientY;
+  detailHeight = clamp(resizeStartH + dy, 80, window.innerHeight * 0.7);
+  detailPanel.style.height = detailHeight + 'px';
+});
+
+document.addEventListener('mouseup', () => {
+  if (!resizeDragging) return;
+  resizeDragging = false;
+  detailResizeHandle.classList.remove('dragging');
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  requestRender();
+});
+
+function showDetail(node) {
+  if (!node) {
+    detailPanel.classList.remove('open');
+    detailPanel.style.height = '';
+    detailResizeHandle.classList.remove('visible');
+    detailLeft.innerHTML = '';
+    detailRight.innerHTML = '';
+    icicleSelected = null;
+    renderBreadcrumb();
+    requestRender();
+    return;
+  }
+  icicleSelected = node;
+  detailPanel.classList.add('open');
+  detailResizeHandle.classList.add('visible');
+  detailPanel.style.height = detailHeight + 'px';
+  renderBreadcrumb();
+  requestRender();
+
+  const rootTokens = currentTree ? currentTree.tokens || currentTree._sumTokens : 0;
+
+  /* Build path */
+  const pathArr = [];
+  let cur = node;
+  while (cur) { pathArr.unshift(cur.name || 'root'); cur = parentMap.get(cur); }
+
+  let tags = `<span class="detail-tag">${escHtml(node.type)}</span>`;
+  if (node.role) tags += `<span class="detail-tag">${escHtml(node.role)}</span>`;
+  if (node.tool_name) tags += `<span class="detail-tag">${escHtml(node.tool_name)}</span>`;
+
+  /* Left panel: main info */
+  detailLeft.innerHTML = `
+    <div class="detail-cell"><div class="detail-label">Name</div><div class="detail-value">${escHtml(node.name)}</div></div>
+    <div class="detail-cell"><div class="detail-label">Tokens</div><div class="detail-value">${fmtK(node.tokens)} ${rootTokens ? '<span style="color:#666">(' + fmtPct(node.tokens, rootTokens) + ')</span>' : ''}</div></div>
+    <div class="detail-cell"><div class="detail-label">Tags</div><div class="detail-value">${tags}</div></div>
+    <div class="detail-cell"><div class="detail-label">Path</div><div class="detail-value mono" style="color:#666;font-size:10px;">${escHtml(pathArr.join(' › '))}</div></div>
+    ${node.children ? `<div class="detail-cell"><div class="detail-label">Children</div><div class="detail-value">${node.children.length}</div></div>` : ''}
+  `;
+
+  /* Right panel: raw JSON */
+  const rawJson = buildNodeRawJson(node);
+  detailRight.innerHTML = `<div class="json-tree">${renderJsonTree(rawJson, 0)}</div>`;
+  initJsonToggle(detailRight);
+}
+
+/* ════════════════════════════════════════════════════
+   ROUND SWITCHING
+   ════════════════════════════════════════════════════ */
+function switchToRound(index) {
+  if (index < 0 || index >= session_trees.length) return;
+  const tree = session_trees[index];
+  if (!tree) return;
+
+  currentRound = tree.request_index;
+  currentTree = tree;
+  icicleHierarchy = buildHierarchy(tree);
+  buildParentMap();
+  computeColWidths();
+  icicleHovered = null;
+  icicleSelected = null;
+
+  document.getElementById('call-badge').textContent = `Call #${currentRound}`;
+
+  showDetail(null);
+  fitViewport();
+  renderTimeline();
+  renderIcicle();
+  renderBreadcrumb();
+}
+
+function switchToSnapshot() {
+  currentTree = icicle;
+  currentRound = -1;
+  icicleHierarchy = buildHierarchy(icicle);
+  buildParentMap();
+  computeColWidths();
+  icicleHovered = null;
+  icicleSelected = null;
+
+  document.getElementById('call-badge').textContent = 'snapshot';
+
+  showDetail(null);
+  fitViewport();
+  renderTimeline();
+  renderIcicle();
+  renderBreadcrumb();
+}
+
+/* ════════════════════════════════════════════════════
+   EVENT HANDLERS
+   ════════════════════════════════════════════════════ */
+
+/* ── Timeline events ── */
+let tlDragging = false;
+
+tlEl.addEventListener('mousedown', (ev) => {
+  if (timeline.length < 2) return;
+  tlDragging = true;
+  const idx = timelineHitIndex(ev.clientX);
+  switchToRound(idx);
+});
+
+document.addEventListener('mousemove', (ev) => {
+  if (!tlDragging) return;
+  const idx = timelineHitIndex(ev.clientX);
+  if (timeline[idx] && timeline[idx].request_index !== currentRound) {
+    switchToRound(idx);
+  }
+});
+
+document.addEventListener('mouseup', () => { tlDragging = false; });
+
+/* ── Icicle pan/zoom (speedscope style) ── */
+let icDragging = false;
+let icDragStartX = 0, icDragStartY = 0;
+let icDragVP = null;
+let icLastClickTime = 0;
+let icLastClickNode = null;
+
+icPane.addEventListener('mousedown', (ev) => {
+  if (ev.button !== 0) return;
+  icDragging = true;
+  icDragStartX = ev.clientX;
+  icDragStartY = ev.clientY;
+  icDragVP = { ...viewport };
+  icPane.style.cursor = 'grabbing';
+});
+
+document.addEventListener('mousemove', (ev) => {
+  if (!icDragging) return;
+
+  /* Pan in config space — Y axis only (token fraction) */
+  const dy = ev.clientY - icDragStartY;
+  const availH = icH - BREADCRUMB_H;
+  const vh = icDragVP.y1 - icDragVP.y0;
+  const cfgDy = -(dy / availH) * vh;
+
+  viewport.y0 = icDragVP.y0 + cfgDy;
+  viewport.y1 = icDragVP.y1 + cfgDy;
+  clampViewport();
+  requestRender();
+});
+
+document.addEventListener('mouseup', (ev) => {
+  if (!icDragging) return;
+  const dx = Math.abs(ev.clientX - icDragStartX);
+  const dy = Math.abs(ev.clientY - icDragStartY);
+  const wasDrag = dx > 3 || dy > 3;
+
+  icDragging = false;
+  icPane.style.cursor = '';
+
+  if (!wasDrag) {
+    /* It was a click, not a drag */
+    const node = icicleHitTest(ev.clientX, ev.clientY);
+    const now = Date.now();
+
+    /* Double-click detection */
+    if (node && node === icLastClickNode && (now - icLastClickTime) < 350) {
+      /* Double-click: zoom to fit this node */
+      zoomToNode(node);
+      showDetail(node);
+      icLastClickTime = 0;
+      icLastClickNode = null;
+    } else {
+      /* Single click: select */
+      icLastClickTime = now;
+      icLastClickNode = node;
+      showDetail(node);
+    }
+  }
+});
+
+/* Hover */
+icPane.addEventListener('mousemove', (ev) => {
+  if (icDragging) return;
+  const node = icicleHitTest(ev.clientX, ev.clientY);
+  if (node !== icicleHovered) {
+    icicleHovered = node;
+    requestRender();
+  }
+  showTooltip(ev, node);
+  icPane.style.cursor = node ? 'pointer' : 'grab';
+});
+
+icPane.addEventListener('mouseleave', () => {
+  if (icicleHovered) {
+    icicleHovered = null;
+    requestRender();
+  }
+  tooltipEl.style.display = 'none';
+});
+
+/* Wheel: pinch = zoom, two-finger scroll = pan */
+icPane.addEventListener('wheel', (ev) => {
+  ev.preventDefault();
+  const rect = icPane.getBoundingClientRect();
+  const my = ev.clientY - rect.top;
+
+  if (ev.ctrlKey || ev.metaKey) {
+    /* Pinch-to-zoom: zoom vertically around cursor */
+    const zoomFactor = Math.pow(1.04, -ev.deltaY);
+    const cfgY = screenToCfgY(my);
+    const vh = viewport.y1 - viewport.y0;
+    const newH = clamp(vh * zoomFactor, 0.0001, 1);
+    const ratio = (cfgY - viewport.y0) / vh;
+    viewport.y0 = cfgY - ratio * newH;
+    viewport.y1 = cfgY + (1 - ratio) * newH;
+  } else {
+    /* Two-finger scroll: pan vertically */
+    const vh = viewport.y1 - viewport.y0;
+    const delta = (ev.deltaY / (icH - BREADCRUMB_H)) * vh;
+    viewport.y0 += delta;
+    viewport.y1 += delta;
+  }
+  clampViewport();
+  requestRender();
+}, { passive: false });
+
+/* ── Keyboard ── */
+document.addEventListener('keydown', (ev) => {
+  /* Round navigation */
+  if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') {
+    if (timeline.length < 2) return;
+    ev.preventDefault();
+    const currentIdx = timeline.findIndex(d => d.request_index === currentRound);
+    const newIdx = ev.key === 'ArrowLeft'
+      ? Math.max(0, currentIdx - 1)
+      : Math.min(timeline.length - 1, currentIdx + 1);
+    switchToRound(newIdx);
+    return;
+  }
+
+  /* Zoom */
+  if (ev.key === '=' || ev.key === '+') {
+    const cy = (viewport.y0 + viewport.y1) / 2;
+    const vh = viewport.y1 - viewport.y0;
+    const newH = vh * 0.7;
+    viewport.y0 = cy - newH / 2;
+    viewport.y1 = cy + newH / 2;
+    clampViewport();
+    requestRender();
+  }
+  if (ev.key === '-') {
+    const cy = (viewport.y0 + viewport.y1) / 2;
+    const vh = viewport.y1 - viewport.y0;
+    const newH = Math.min(2, vh * 1.4);
+    viewport.y0 = cy - newH / 2;
+    viewport.y1 = cy + newH / 2;
+    clampViewport();
+    requestRender();
+  }
+
+  /* Reset view */
+  if (ev.key === '0') {
+    fitViewport();
+    requestRender();
+  }
+
+  if (ev.key === 'Escape') {
+    showDetail(null);
+  }
+
+  /* W/S vertical pan */
+  const panStep = 0.1;
+  const vh = viewport.y1 - viewport.y0;
+  if (ev.key === 'w') { viewport.y0 -= vh * panStep; viewport.y1 -= vh * panStep; clampViewport(); requestRender(); }
+  if (ev.key === 's') { viewport.y0 += vh * panStep; viewport.y1 += vh * panStep; clampViewport(); requestRender(); }
+});
+
+/* ── Color scheme toggle ── */
+document.querySelectorAll('.toolbar-btn[data-scheme]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.toolbar-btn[data-scheme]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    colorScheme = btn.dataset.scheme;
+    /* Rebuild hierarchy because removed_group visibility depends on scheme */
+    if (currentTree) {
+      icicleHierarchy = buildHierarchy(currentTree);
+      buildParentMap();
+      computeColWidths();
+    }
+    buildFilterChips();
+    renderIcicle();
+  });
+});
+
+/* ── Resize ── */
+window.addEventListener('resize', () => {
+  renderTimeline();
+  requestRender();
+  if (currentView === 'tools') renderToolsView();
+});
+
+/* ── Role filter chips ── */
+const ROLE_CHIP_DEFS = [
+  { type: 'msg_system', label: 'system', color: ROLE_COLORS.msg_system },
+  { type: 'msg_user', label: 'user', color: ROLE_COLORS.msg_user },
+  { type: 'msg_assistant', label: 'assistant', color: ROLE_COLORS.msg_assistant },
+  { type: 'msg_tool', label: 'tool', color: ROLE_COLORS.msg_tool },
+  { type: 'tool_use', label: 'tool_use', color: ROLE_COLORS.tool_use },
+  { type: 'tool_result', label: 'tool_result', color: ROLE_COLORS.tool_result },
+  { type: 'tool_defs', label: 'tool_defs', color: ROLE_COLORS.tool_defs },
+];
+
+const DIFF_CHIP_DEFS = [
+  { diff: 'unchanged', label: 'unchanged', color: DIFF_COLORS.unchanged },
+  { diff: 'added', label: 'added', color: DIFF_COLORS.added },
+  { diff: 'removed', label: 'removed', color: DIFF_COLORS.removed },
+  { diff: 'modified', label: 'modified', color: DIFF_COLORS.modified },
+];
+
+let diffFilter = null;  /* null = no filter, or 'unchanged' | 'added' | 'removed' | 'modified' */
+
+function nodeMatchesDiffFilter(node) {
+  if (!diffFilter) return true;
+  if (node.diff === diffFilter) return true;
+  if (node.children) {
+    for (const c of node.children) {
+      if (nodeMatchesDiffFilter(c)) return true;
+    }
+  }
+  return false;
+}
+
+function buildFilterChips() {
+  const filterBar = document.getElementById('role-filter-bar');
+  /* Clear existing chips */
+  filterBar.querySelectorAll('.role-chip').forEach(c => c.remove());
+  roleFilter = null;
+  diffFilter = null;
+
+  if (colorScheme === 'diff') {
+    DIFF_CHIP_DEFS.forEach(def => {
+      const chip = document.createElement('span');
+      chip.className = 'role-chip';
+      chip.dataset.diff = def.diff;
+      chip.innerHTML = `<span class="chip-dot" style="background:${def.color}"></span>${def.label}`;
+      chip.style.background = 'rgba(255,255,255,0.06)';
+      chip.addEventListener('click', () => {
+        if (diffFilter === def.diff) {
+          diffFilter = null;
+          chip.classList.remove('active');
+        } else {
+          diffFilter = def.diff;
+          filterBar.querySelectorAll('.role-chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+        }
+        renderIcicle();
+      });
+      filterBar.appendChild(chip);
+    });
+  } else {
+    ROLE_CHIP_DEFS.forEach(def => {
+      const chip = document.createElement('span');
+      chip.className = 'role-chip';
+      chip.dataset.type = def.type;
+      chip.innerHTML = `<span class="chip-dot" style="background:${def.color}"></span>${def.label}`;
+      chip.style.background = 'rgba(255,255,255,0.06)';
+      chip.addEventListener('click', () => {
+        if (roleFilter === def.type) {
+          roleFilter = null;
+          chip.classList.remove('active');
+        } else {
+          roleFilter = def.type;
+          filterBar.querySelectorAll('.role-chip').forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+        }
+        renderIcicle();
+      });
+      filterBar.appendChild(chip);
+    });
+  }
+}
+
+buildFilterChips();
+
+/* ════════════════════════════════════════════════════
+   VIEW TOGGLE (Icicle / Tools)
+   ════════════════════════════════════════════════════ */
+const iciclePane = document.getElementById('icicle-pane');
+const toolsPane = document.getElementById('tools-pane');
+const roleFilterBar = document.getElementById('role-filter-bar');
+
+function switchView(view) {
+  currentView = view;
+  document.querySelectorAll('.toolbar-btn[data-view]').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.toolbar-btn[data-view="${view}"]`).classList.add('active');
+
+  if (view === 'icicle') {
+    iciclePane.style.display = '';
+    toolsPane.classList.remove('visible');
+    roleFilterBar.style.display = '';
+    requestRender();
+  } else {
+    iciclePane.style.display = 'none';
+    toolsPane.classList.add('visible');
+    roleFilterBar.style.display = 'none';
+    showDetail(null);
+    renderToolsView();
+  }
+}
+
+document.querySelectorAll('.toolbar-btn[data-view]').forEach(btn => {
+  btn.addEventListener('click', () => switchView(btn.dataset.view));
+});
+
+/* ════════════════════════════════════════════════════
+   TOOL ANALYSIS VIEW (Canvas-based)
+   ════════════════════════════════════════════════════ */
+const toolsLeftEl = document.getElementById('tools-left');
+const toolsRightEl = document.getElementById('tools-right');
+const toolsResizeHandle = document.getElementById('tools-resize-handle');
+const toolsTableCanvas = document.getElementById('tools-table-canvas');
+const toolsTableCtx = toolsTableCanvas.getContext('2d');
+const toolsDetailEl = document.getElementById('tools-detail-html');
+
+const TA_COLORS = {
+  definition: '#6e4a1e',
+  call: '#8957e5',
+  result: '#2ea043',
+};
+const TA_ROW_H = 32;
+const TA_HEADER_H = 28;
+const TA_PAD = { top: 8, left: 12, right: 12, bottom: 8 };
+
+let taSelectedTool = null;   /* index into tool_analysis.tools */
+let taHoveredRow = -1;
+let taScrollY = 0;           /* scroll offset for left table */
+let taSortKey = 'total_tokens';
+let taSortAsc = false;
+let taSortedTools = [];
+
+function taSortTools() {
+  if (!tool_analysis || !tool_analysis.tools) { taSortedTools = []; return; }
+  taSortedTools = [...tool_analysis.tools];
+  taSortedTools.sort((a, b) => {
+    const va = a[taSortKey] || 0, vb = b[taSortKey] || 0;
+    return taSortAsc ? va - vb : vb - va;
+  });
+}
+
+function renderToolsView() {
+  taSortTools();
+  renderToolsTable();
+  renderToolsDetail();
+}
+
+/* ── Left panel: Tool ranking table ── */
+function renderToolsTable() {
+  const rect = toolsLeftEl.getBoundingClientRect();
+  toolsTableCanvas.width = rect.width * dpr;
+  toolsTableCanvas.height = rect.height * dpr;
+  const W = rect.width, H = rect.height;
+  const ctx = toolsTableCtx;
+  ctx.clearRect(0, 0, toolsTableCanvas.width, toolsTableCanvas.height);
+  ctx.save();
+  ctx.scale(dpr, dpr);
+
+  if (!taSortedTools.length) {
+    ctx.font = "12px 'IBM Plex Mono', monospace";
+    ctx.fillStyle = '#666';
+    ctx.textAlign = 'center';
+    ctx.fillText('No tool usage data', W / 2, H / 2);
+    ctx.restore();
+    return;
+  }
+
+  const totalCtx = tool_analysis.total_context_tokens || 1;
+
+  /* Column layout */
+  const cols = [
+    { key: 'name', label: 'Tool Name', width: 0.30 },
+    { key: 'total_tokens', label: 'Total', width: 0.12 },
+    { key: 'definition_tokens', label: 'Def', width: 0.08 },
+    { key: 'call_tokens', label: 'Calls', width: 0.10 },
+    { key: 'result_tokens', label: 'Results', width: 0.10 },
+    { key: 'call_count', label: '#', width: 0.06 },
+    { key: '_bar', label: '', width: 0.24 },
+  ];
+  const contentW = W - TA_PAD.left - TA_PAD.right;
+  let cx = TA_PAD.left;
+  const colX = [];
+  const colW = [];
+  for (const col of cols) {
+    colX.push(cx);
+    const w = Math.floor(col.width * contentW);
+    colW.push(w);
+    cx += w;
+  }
+
+  /* Header */
+  ctx.fillStyle = '#0e0e0e';
+  ctx.fillRect(0, 0, W, TA_HEADER_H);
+  ctx.font = "bold 10px 'IBM Plex Mono', monospace";
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i < cols.length; i++) {
+    if (cols[i].key === '_bar') continue;
+    ctx.fillStyle = taSortKey === cols[i].key ? '#5b9bf5' : '#888';
+    ctx.textAlign = 'left';
+    let label = cols[i].label;
+    if (taSortKey === cols[i].key) label += taSortAsc ? ' ↑' : ' ↓';
+    ctx.fillText(label, colX[i], TA_HEADER_H / 2);
+  }
+
+  /* Separator */
+  ctx.strokeStyle = '#2a2a2a';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, TA_HEADER_H);
+  ctx.lineTo(W, TA_HEADER_H);
+  ctx.stroke();
+
+  /* Rows */
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, TA_HEADER_H, W, H - TA_HEADER_H);
+  ctx.clip();
+
+  const barColIdx = cols.findIndex(c => c.key === '_bar');
+  const maxTotal = taSortedTools[0] ? taSortedTools[0].total_tokens : 1;
+
+  for (let r = 0; r < taSortedTools.length; r++) {
+    const tool = taSortedTools[r];
+    const ry = TA_HEADER_H + r * TA_ROW_H - taScrollY;
+    if (ry + TA_ROW_H < TA_HEADER_H || ry > H) continue;
+
+    /* Row background */
+    const isSelected = taSelectedTool !== null && taSortedTools[taSelectedTool] === tool;
+    const isHovered = r === taHoveredRow;
+    if (isSelected) {
+      ctx.fillStyle = 'rgba(91, 155, 245, 0.15)';
+      ctx.fillRect(0, ry, W, TA_ROW_H);
+    } else if (isHovered) {
+      ctx.fillStyle = 'rgba(255,255,255,0.04)';
+      ctx.fillRect(0, ry, W, TA_ROW_H);
+    }
+
+    ctx.font = "11px 'IBM Plex Mono', monospace";
+    ctx.textBaseline = 'middle';
+    const cy = ry + TA_ROW_H / 2;
+
+    for (let i = 0; i < cols.length; i++) {
+      if (cols[i].key === '_bar') continue;
+      ctx.textAlign = 'left';
+
+      if (cols[i].key === 'name') {
+        ctx.fillStyle = isSelected ? '#5b9bf5' : '#e0e0e0';
+        const maxChars = Math.floor(colW[i] / 7);
+        const name = tool.name.length > maxChars ? tool.name.slice(0, maxChars - 1) + '…' : tool.name;
+        ctx.fillText(name, colX[i], cy);
+      } else {
+        ctx.fillStyle = '#a0a0a0';
+        ctx.fillText(fmtK(tool[cols[i].key]), colX[i], cy);
+      }
+    }
+
+    /* Stacked bar */
+    if (barColIdx >= 0) {
+      const bx = colX[barColIdx];
+      const bw = colW[barColIdx] - 4;
+      const barTotal = tool.total_tokens || 1;
+      const scale = bw * (tool.total_tokens / (maxTotal || 1));
+
+      const defW = (tool.definition_tokens / barTotal) * scale;
+      const callW = (tool.call_tokens / barTotal) * scale;
+      const resW = (tool.result_tokens / barTotal) * scale;
+
+      let bxx = bx;
+      ctx.fillStyle = TA_COLORS.definition;
+      ctx.fillRect(bxx, ry + 8, defW, TA_ROW_H - 16);
+      bxx += defW;
+      ctx.fillStyle = TA_COLORS.call;
+      ctx.fillRect(bxx, ry + 8, callW, TA_ROW_H - 16);
+      bxx += callW;
+      ctx.fillStyle = TA_COLORS.result;
+      ctx.fillRect(bxx, ry + 8, resW, TA_ROW_H - 16);
+
+      /* % label — right-aligned within bar column to prevent overflow */
+      const pct = fmtPct(tool.total_tokens, totalCtx);
+      ctx.font = "9px 'IBM Plex Mono', monospace";
+      const pctW = ctx.measureText(pct).width;
+      const barEnd = bxx + resW;
+      const colEnd = bx + bw;
+      if (barEnd + 4 + pctW <= colEnd) {
+        /* Fits after the bar */
+        ctx.fillStyle = '#666';
+        ctx.fillText(pct, barEnd + 4, cy);
+      } else {
+        /* Doesn't fit — draw inside bar, right-aligned to column edge */
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.textAlign = 'right';
+        ctx.fillText(pct, colEnd, cy);
+        ctx.textAlign = 'left';
+      }
+    }
+
+    /* Row separator */
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(0, ry + TA_ROW_H);
+    ctx.lineTo(W, ry + TA_ROW_H);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+
+  /* Legend at bottom */
+  ctx.font = "9px 'IBM Plex Mono', monospace";
+  ctx.textBaseline = 'bottom';
+  const legendY = H - 6;
+  let lx = TA_PAD.left;
+  for (const [label, color] of [['Definition', TA_COLORS.definition], ['Calls', TA_COLORS.call], ['Results', TA_COLORS.result]]) {
+    ctx.fillStyle = color;
+    ctx.fillRect(lx, legendY - 8, 10, 8);
+    lx += 14;
+    ctx.fillStyle = '#888';
+    ctx.fillText(label, lx, legendY);
+    lx += ctx.measureText(label).width + 12;
+  }
+
+  ctx.restore();
+}
+
+/* ── Right panel: Tool detail (HTML-based) ── */
+function renderToolsDetail() {
+  if (taSelectedTool === null || !taSortedTools[taSelectedTool]) {
+    toolsDetailEl.innerHTML = '<div class="td-empty">Click a tool to view details</div>';
+    return;
+  }
+
+  const tool = taSortedTools[taSelectedTool];
+  const totalCtx = tool_analysis.total_context_tokens || 1;
+
+  let html = '';
+  html += `<div class="td-title">${escHtml(tool.name)}</div>`;
+
+  /* Stats grid */
+  html += '<div class="td-stats">';
+  const stats = [
+    ['Total', fmtK(tool.total_tokens), fmtPct(tool.total_tokens, totalCtx)],
+    ['Definition', fmtK(tool.definition_tokens), fmtPct(tool.definition_tokens, totalCtx)],
+    ['Calls', fmtK(tool.call_tokens), 'avg ' + fmtK(tool.avg_call_tokens)],
+    ['Results', fmtK(tool.result_tokens), 'avg ' + fmtK(tool.avg_result_tokens)],
+    ['Invocations', String(tool.call_count), ''],
+  ];
+  for (const [label, val, extra] of stats) {
+    html += `<span class="label">${label}:</span><span>${val}</span><span class="extra">${extra}</span>`;
+  }
+  html += '</div>';
+
+  /* Raw definition */
+  if (tool.raw_definition) {
+    html += '<hr class="td-sep">';
+    html += '<div class="td-raw-label">Tool Definition</div>';
+    html += `<div class="td-raw">${formatRawContent(tool.raw_definition)}</div>`;
+  }
+
+  /* Invocations with raw content */
+  if (tool.calls && tool.calls.length > 0) {
+    html += '<hr class="td-sep">';
+    /* Table header */
+    html += '<div class="td-tbl-header">';
+    html += '<span>Msg #</span><span>Call</span><span>Result</span><span>Total</span><span></span><span></span>';
+    html += '</div>';
+
+    const maxTotal = tool.calls[0].call_tokens + tool.calls[0].result_tokens || 1;
+
+    for (let i = 0; i < tool.calls.length; i++) {
+      const inv = tool.calls[i];
+      const invTotal = inv.call_tokens + inv.result_tokens;
+      /* Mini bar widths */
+      const miniScale = (invTotal / maxTotal) * 100;
+      const miniCallPct = (inv.call_tokens / (invTotal || 1)) * miniScale;
+      const miniResPct = miniScale - miniCallPct;
+
+      html += `<div class="td-inv" data-idx="${i}">`;
+      html += '<div class="td-inv-header">';
+      html += `<span class="idx">#${inv.index}</span>`;
+      html += `<span class="tok" style="color:${TA_COLORS.call}">${fmtK(inv.call_tokens)}</span>`;
+      html += `<span class="tok" style="color:${TA_COLORS.result}">${fmtK(inv.result_tokens)}</span>`;
+      html += `<span class="tok">${fmtK(invTotal)}</span>`;
+      html += `<span class="mini-bar"><span style="width:${miniCallPct}%;background:${TA_COLORS.call}"></span><span style="width:${miniResPct}%;background:${TA_COLORS.result}"></span></span>`;
+      html += '<span class="arrow">▶</span>';
+      html += '</div>';
+      html += '<div class="td-inv-body">';
+      if (inv.raw_call != null) {
+        html += '<div class="td-raw-label">Call Arguments</div>';
+        html += `<div class="td-raw">${formatRawContent(inv.raw_call)}</div>`;
+      }
+      if (inv.raw_result != null) {
+        html += '<div class="td-raw-label">Result</div>';
+        html += `<div class="td-raw">${formatRawContent(inv.raw_result)}</div>`;
+      }
+      if (inv.raw_call == null && inv.raw_result == null) {
+        html += '<div class="td-raw" style="color:#666;padding:8px 10px">No raw content available</div>';
+      }
+      html += '</div></div>';
+    }
+  }
+
+  toolsDetailEl.innerHTML = html;
+
+  /* Toggle invocation expand/collapse */
+  toolsDetailEl.querySelectorAll('.td-inv-header').forEach(h => {
+    h.addEventListener('click', () => {
+      h.parentElement.classList.toggle('open');
+    });
+  });
+}
+
+function formatRawContent(content) {
+  if (typeof content === 'object' && content !== null) {
+    return escHtml(JSON.stringify(content, null, 2));
+  }
+  /* Try to pretty-print JSON strings */
+  if (typeof content === 'string') {
+    try {
+      const parsed = JSON.parse(content);
+      return escHtml(JSON.stringify(parsed, null, 2));
+    } catch(e) {}
+    return escHtml(content);
+  }
+  return escHtml(String(content));
+}
+
+/* ── Tool table interactions ── */
+function taTableHitRow(clientY) {
+  const rect = toolsLeftEl.getBoundingClientRect();
+  const y = clientY - rect.top;
+  if (y < TA_HEADER_H) return -2; /* header */
+  const row = Math.floor((y - TA_HEADER_H + taScrollY) / TA_ROW_H);
+  if (row < 0 || row >= taSortedTools.length) return -1;
+  return row;
+}
+
+function taTableHitCol(clientX) {
+  const rect = toolsLeftEl.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const contentW = rect.width - TA_PAD.left - TA_PAD.right;
+  const cols = [
+    { key: 'name', width: 0.30 },
+    { key: 'total_tokens', width: 0.12 },
+    { key: 'definition_tokens', width: 0.08 },
+    { key: 'call_tokens', width: 0.10 },
+    { key: 'result_tokens', width: 0.10 },
+    { key: 'call_count', width: 0.06 },
+    { key: '_bar', width: 0.24 },
+  ];
+  let cx = TA_PAD.left;
+  for (const col of cols) {
+    const w = Math.floor(col.width * contentW);
+    if (x >= cx && x < cx + w) return col.key;
+    cx += w;
+  }
+  return null;
+}
+
+toolsTableCanvas.addEventListener('click', (ev) => {
+  const row = taTableHitRow(ev.clientY);
+  if (row === -2) {
+    /* Header click: toggle sort */
+    const col = taTableHitCol(ev.clientX);
+    if (col && col !== '_bar') {
+      if (taSortKey === col) {
+        taSortAsc = !taSortAsc;
+      } else {
+        taSortKey = col;
+        taSortAsc = col === 'name';
+      }
+      taSelectedTool = null;
+      renderToolsView();
+    }
+    return;
+  }
+  if (row >= 0 && row < taSortedTools.length) {
+    taSelectedTool = row;
+    renderToolsView();
+  }
+});
+
+toolsTableCanvas.addEventListener('mousemove', (ev) => {
+  const row = taTableHitRow(ev.clientY);
+  const newHover = row >= 0 ? row : -1;
+  if (newHover !== taHoveredRow) {
+    taHoveredRow = newHover;
+    renderToolsTable();
+  }
+  toolsTableCanvas.style.cursor = (row >= 0 || row === -2) ? 'pointer' : 'default';
+
+  /* Tooltip on bar/pct column */
+  if (row >= 0 && row < taSortedTools.length) {
+    const col = taTableHitCol(ev.clientX);
+    if (col === '_bar') {
+      const tool = taSortedTools[row];
+      const totalCtx = tool_analysis.total_context_tokens || 1;
+      let html = `<div class="tt-name">${escHtml(tool.name)}</div>`;
+      html += `<div class="tt-row">Total: <span class="tt-val">${fmtK(tool.total_tokens)}</span> <span class="tt-pct">(${fmtPct(tool.total_tokens, totalCtx)})</span></div>`;
+      html += `<div class="tt-row" style="color:${TA_COLORS.definition}">Definition: <span class="tt-val">${fmtK(tool.definition_tokens)}</span> <span class="tt-pct">(${fmtPct(tool.definition_tokens, totalCtx)})</span></div>`;
+      html += `<div class="tt-row" style="color:${TA_COLORS.call}">Calls: <span class="tt-val">${fmtK(tool.call_tokens)}</span> <span class="tt-pct">(${fmtPct(tool.call_tokens, totalCtx)})</span></div>`;
+      html += `<div class="tt-row" style="color:${TA_COLORS.result}">Results: <span class="tt-val">${fmtK(tool.result_tokens)}</span> <span class="tt-pct">(${fmtPct(tool.result_tokens, totalCtx)})</span></div>`;
+      html += `<div class="tt-row">Invocations: <span class="tt-val">${tool.call_count}</span></div>`;
+      tooltipEl.innerHTML = html;
+      tooltipEl.style.display = 'block';
+      moveTooltip(ev);
+    } else {
+      tooltipEl.style.display = 'none';
+    }
+  } else {
+    tooltipEl.style.display = 'none';
+  }
+});
+
+toolsTableCanvas.addEventListener('mouseleave', () => {
+  if (taHoveredRow !== -1) {
+    taHoveredRow = -1;
+    renderToolsTable();
+  }
+  tooltipEl.style.display = 'none';
+});
+
+toolsTableCanvas.addEventListener('wheel', (ev) => {
+  ev.preventDefault();
+  const maxScroll = Math.max(0, taSortedTools.length * TA_ROW_H - (toolsLeftEl.getBoundingClientRect().height - TA_HEADER_H));
+  taScrollY = clamp(taScrollY + ev.deltaY, 0, maxScroll);
+  renderToolsTable();
+}, { passive: false });
+
+/* ── Tools pane horizontal resize handle ── */
+{
+  let dragging = false, startX = 0, startW = 0;
+  toolsResizeHandle.addEventListener('mousedown', (ev) => {
+    ev.preventDefault();
+    dragging = true;
+    startX = ev.clientX;
+    startW = toolsLeftEl.getBoundingClientRect().width;
+    toolsResizeHandle.classList.add('dragging');
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+  });
+  document.addEventListener('mousemove', (ev) => {
+    if (!dragging) return;
+    const paneW = document.getElementById('tools-pane').getBoundingClientRect().width;
+    const newW = clamp(startW + (ev.clientX - startX), 200, paneW - 200);
+    toolsLeftEl.style.width = newW + 'px';
+    renderToolsTable();
+    renderToolsDetail();
+  });
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    toolsResizeHandle.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   INIT
+   ════════════════════════════════════════════════════ */
+document.getElementById('mode-badge').textContent = metrics.mode || 'snapshot';
+
+if (session_trees.length > 1) {
+  /* Session mode: start at last round */
+  switchToRound(session_trees.length - 1);
+} else if (session_trees.length === 1) {
+  switchToRound(0);
+} else {
+  /* Snapshot mode */
+  switchToSnapshot();
+}
+</script>
+</body>
+</html>
