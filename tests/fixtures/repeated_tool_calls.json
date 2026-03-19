@@ -1,0 +1,130 @@
+{
+    "model": "gpt-4",
+    "tools": [
+        {
+            "type": "function",
+            "function": {
+                "name": "generate_canvas_component",
+                "description": "Generate a canvas component",
+                "parameters": {
+                    "properties": {
+                        "module_id": {"type": "string"},
+                        "requirements": {"type": "string"},
+                        "page_number": {"type": "integer"}
+                    },
+                    "required": ["module_id", "requirements", "page_number"],
+                    "type": "object"
+                }
+            }
+        }
+    ],
+    "messages": [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant that generates canvas components for educational modules."
+        },
+        {
+            "role": "user",
+            "content": "Please generate canvas components for all 5 pages of this module about Chinese poetry."
+        },
+        {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+                {
+                    "id": "call_1",
+                    "type": "function",
+                    "function": {
+                        "name": "generate_canvas_component",
+                        "arguments": "{\"module_id\": \"mod_001\", \"requirements\": \"Page Title: Introduction to Chinese Poetry\\nContent Outline: This module covers the history and development of Chinese poetry from ancient times to modern era. Include sections on major poets, poetic forms (shi, ci, qu), literary techniques, cultural significance, and historical context. The content should be comprehensive and educational, suitable for university-level students studying Chinese literature. Include visual elements and interactive components where appropriate. Focus on the Tang Dynasty golden age of poetry and its lasting influence on Chinese culture and literature worldwide.\", \"page_number\": 1}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "tool",
+            "tool_call_id": "call_1",
+            "content": "{\"success\": true, \"component_id\": \"canvas_001\"}"
+        },
+        {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+                {
+                    "id": "call_2",
+                    "type": "function",
+                    "function": {
+                        "name": "generate_canvas_component",
+                        "arguments": "{\"module_id\": \"mod_001\", \"requirements\": \"Page Title: Introduction to Chinese Poetry\\nContent Outline: This module covers the history and development of Chinese poetry from ancient times to modern era. Include sections on major poets, poetic forms (shi, ci, qu), literary techniques, cultural significance, and historical context. The content should be comprehensive and educational, suitable for university-level students studying Chinese literature. Include visual elements and interactive components where appropriate. Focus on the Tang Dynasty golden age of poetry and its lasting influence on Chinese culture and literature worldwide.\", \"page_number\": 2}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "tool",
+            "tool_call_id": "call_2",
+            "content": "{\"success\": true, \"component_id\": \"canvas_002\"}"
+        },
+        {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+                {
+                    "id": "call_3",
+                    "type": "function",
+                    "function": {
+                        "name": "generate_canvas_component",
+                        "arguments": "{\"module_id\": \"mod_001\", \"requirements\": \"Page Title: Introduction to Chinese Poetry\\nContent Outline: This module covers the history and development of Chinese poetry from ancient times to modern era. Include sections on major poets, poetic forms (shi, ci, qu), literary techniques, cultural significance, and historical context. The content should be comprehensive and educational, suitable for university-level students studying Chinese literature. Include visual elements and interactive components where appropriate. Focus on the Tang Dynasty golden age of poetry and its lasting influence on Chinese culture and literature worldwide.\", \"page_number\": 3}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "tool",
+            "tool_call_id": "call_3",
+            "content": "{\"success\": true, \"component_id\": \"canvas_003\"}"
+        },
+        {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+                {
+                    "id": "call_4",
+                    "type": "function",
+                    "function": {
+                        "name": "generate_canvas_component",
+                        "arguments": "{\"module_id\": \"mod_001\", \"requirements\": \"Page Title: Introduction to Chinese Poetry\\nContent Outline: This module covers the history and development of Chinese poetry from ancient times to modern era. Include sections on major poets, poetic forms (shi, ci, qu), literary techniques, cultural significance, and historical context. The content should be comprehensive and educational, suitable for university-level students studying Chinese literature. Include visual elements and interactive components where appropriate. Focus on the Tang Dynasty golden age of poetry and its lasting influence on Chinese culture and literature worldwide.\", \"page_number\": 4}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "tool",
+            "tool_call_id": "call_4",
+            "content": "{\"success\": true, \"component_id\": \"canvas_004\"}"
+        },
+        {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+                {
+                    "id": "call_5",
+                    "type": "function",
+                    "function": {
+                        "name": "generate_canvas_component",
+                        "arguments": "{\"module_id\": \"mod_001\", \"requirements\": \"Page Title: Introduction to Chinese Poetry\\nContent Outline: This module covers the history and development of Chinese poetry from ancient times to modern era. Include sections on major poets, poetic forms (shi, ci, qu), literary techniques, cultural significance, and historical context. The content should be comprehensive and educational, suitable for university-level students studying Chinese literature. Include visual elements and interactive components where appropriate. Focus on the Tang Dynasty golden age of poetry and its lasting influence on Chinese culture and literature worldwide.\", \"page_number\": 5}"
+                    }
+                }
+            ]
+        },
+        {
+            "role": "tool",
+            "tool_call_id": "call_5",
+            "content": "{\"success\": true, \"component_id\": \"canvas_005\"}"
+        },
+        {
+            "role": "assistant",
+            "content": "I've generated all 5 canvas components for the Chinese poetry module."
+        }
+    ]
+}

@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+*.tar.gz
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Generated reports (large files)
+report.html
+*.lhar
+
+# Trace files
+trace-*.json
+
+# Cursor / Claude
+.claude/
+.cursor/
+
+# uv
+uv.lock
+
+# Example generated files (keep raw data, ignore generated)
+examples/report.html
+examples/session.jsonl
