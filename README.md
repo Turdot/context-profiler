@@ -1,7 +1,7 @@
 # context-profiler
 
-[![PyPI version](https://img.shields.io/pypi/v/context-profiler.svg)](https://pypi.org/project/context-profiler/)
-[![Python](https://img.shields.io/pypi/pyversions/context-profiler.svg)](https://pypi.org/project/context-profiler/)
+[![PyPI version](https://img.shields.io/pypi/v/context-profiler)](https://pypi.org/project/context-profiler/)
+[![Python](https://img.shields.io/pypi/pyversions/context-profiler)](https://pypi.org/project/context-profiler/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Framework-agnostic profiler for LLM agent context windows. Parses raw API request JSON and visualizes **where your tokens go** — no SDK instrumentation needed.
