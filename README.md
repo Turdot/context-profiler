@@ -14,6 +14,8 @@ Bring any agent trace, loop, transcript, or raw provider request. `context-profi
 
 Agent systems fail quietly when context grows too large, repeats stale observations, carries verbose tool payloads, or churns on the same artifact for many turns. Observability tools tell you what happened. `context-profiler` focuses on what happened to the context.
 
+This direction is also motivated by recent work on long-horizon coding agents, including ByteDance Seed's context-folding research, which highlights that agent performance depends not only on model capability but also on how intermediate observations, repeated context, and compressed histories are retained across turns.
+
 It is designed for both humans and agents:
 
 - Humans get an interactive HTML report with timeline, icicle, diff, and tool views.
@@ -204,6 +206,7 @@ This project is inspired by and learned from:
 
 - [context-lens](https://github.com/larsderidder/context-lens) — local proxy for capturing and visualizing LLM API calls
 - [ContextFlame](https://github.com/jcgs2503/contextflame) — flamegraph-based token profiling for Claude Code
+- ByteDance Seed's work on long-horizon agent context management, including *Scaling Long-Horizon LLM Agent via Context-Folding*
 - [speedscope](https://www.speedscope.app/) — the icicle / flamegraph UI design is inspired by speedscope's interactive visualization
 
 ## License
