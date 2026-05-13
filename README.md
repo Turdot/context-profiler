@@ -4,22 +4,32 @@
 [![Python](https://img.shields.io/pypi/pyversions/context-profiler)](https://pypi.org/project/context-profiler/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Framework-agnostic profiler for LLM agent context windows. Parses raw API request JSON and visualizes **where your tokens go** — no SDK instrumentation needed.
+Trace-source agnostic context analysis harness for LLM agents.
+
+Bring any agent trace, loop, transcript, or raw provider request. `context-profiler` explains how the context grows, which tools dominate it, what repeats, and where turn-to-turn changes happen.
 
 ![Icicle view — token distribution breakdown](assets/demo-snapshot.gif)
 
 ## Why
 
-LLM agent frameworks accumulate tool definitions, system prompts, and conversation history in the context window. You can't optimize what you can't see.
+Agent systems fail quietly when context grows too large, repeats stale observations, carries verbose tool payloads, or churns on the same artifact for many turns. Observability tools tell you what happened. `context-profiler` focuses on what happened to the context.
 
-context-profiler gives you:
+It is designed for both humans and agents:
 
-- **Token distribution** — breakdown by role, content type, and tool name
-- **Icicle visualization** — [speedscope](https://www.speedscope.app/)-style interactive view, zoom into any node
-- **Context growth timeline** — stacked area chart across a session, see the inflection point
-- **Diff visualization** — what's new vs. what's history vs. what got pruned, per request
+- Humans get an interactive HTML report with timeline, icicle, diff, and tool views.
+- Agents get stable JSON from `validate`, `diagnose`, and `schema` commands.
+- Skills teach Cursor, Claude Code, and other Agent Skills compatible tools when to call the CLI.
 
 ![Session mode — timeline and diff](assets/demo-session.gif)
+
+## What It Finds
+
+- **Tool bloat**: tool inputs/results dominate the visible context.
+- **Context growth spikes**: individual turns that add large payloads.
+- **Repeated content**: exact or near-duplicate blocks retained in context.
+- **Repeated tool inputs**: large repeated tool arguments.
+- **Artifact churn**: the same file/component/path appears across many tool calls.
+- **Partial-scope warnings**: transcripts are useful, but not raw provider requests.
 
 ## Install
 
@@ -37,93 +47,151 @@ pip install -e .
 
 ## Quick Start
 
+Analyze a raw provider request:
+
 ```bash
-# Analyze a single API request (snapshot mode)
-context-profiler analyze request.json
+context-profiler analyze request.json --format auto
+context-profiler diagnose request.json --format auto --json
+```
 
-# Analyze context growth over multiple requests (session mode)
-context-profiler analyze session.jsonl
-context-profiler analyze requests_dir/
+Analyze a coding-agent transcript:
 
-# Generate an interactive HTML report
+```bash
+context-profiler diagnose cursor-transcript.jsonl --format cursor-jsonl --json
+context-profiler analyze claude-code-session.jsonl --format claude-code-jsonl --html report.html
+```
+
+Analyze a Langfuse export:
+
+```bash
+context-profiler validate trace.json --format langfuse --json
+context-profiler diagnose trace.json --format langfuse --json
+context-profiler analyze trace.json --format langfuse --html report.html
+```
+
+Generate an interactive report:
+
+```bash
 context-profiler analyze session.jsonl --html report.html
-
-# Export JSON report
-context-profiler analyze request.json -o report.json
-
-# Specify format explicitly
-context-profiler analyze request.json --format openai
-context-profiler analyze request.json --format anthropic
-
-# Analyze Langfuse traces
-context-profiler analyze trace.json --format langfuse
-
-# Multi-trace session (multiple Langfuse exports)
-context-profiler analyze trace1.json trace2.json trace3.json --html report.html
 ```
 
-## Supported Formats
+## Agent-Friendly CLI Harness
 
-Auto-detected from JSON structure:
+`context-profiler` is strict about supported formats but helpful when input does not match. Agents can discover contracts and adapt unsupported traces without asking users to reshape data manually.
 
-| Format | Input | Mode |
-|--------|-------|------|
-| **OpenAI** | `{messages, tools}` | snapshot |
-| **Anthropic** | `{messages, tools}` with content blocks | snapshot |
-| **Langfuse trace** | `{observations: [{type: "GENERATION", ...}]}` | session |
-| **JSONL** | One request per line | session |
-| **Directory** | Folder of `.json` files | session |
+```bash
+# Discover supported formats
+context-profiler formats list --json
+context-profiler formats describe cursor-jsonl --json
 
-## HTML Report Features
+# Discover canonical contracts
+context-profiler schema trace --json
+context-profiler schema diagnosis --json
 
-The HTML report is a self-contained file with no external dependencies:
+# Validate and normalize
+context-profiler validate trace.json --format auto --json
+context-profiler normalize trace.json --from auto --json
 
-- **Icicle view** — hierarchical token breakdown, click to zoom, breadcrumb navigation
-- **Tools view** — per-tool token table with stacked bars, sortable columns
-- **Timeline** — stacked area chart (system / tool defs / messages), click to select request
-- **Color modes** — Semantic (by role) or Diff (unchanged / added / removed)
-- **Role filters** — toggle visibility by role (system, user, assistant, tool)
-- **Detail panel** — content preview and JSON tree for any selected node
-
-## CLI Output
-
+# Diagnose for agent consumption
+context-profiler diagnose trace.json --format auto --json
 ```
-⚠ Warnings
-  • Tool definitions consume 15.2K tokens (35.4% of total)
 
-Token Distribution
-  Category                  Tokens    % of Total
-  Total Input                42.9K          100%
-    System Prompt              1.2K          2.8%
-    Tool Definitions          15.2K         35.4%
-    Messages (assistant)       8.4K         19.6%
-    Messages (tool)           14.1K         32.9%
-    Messages (user)            4.0K          9.3%
+If validation fails, the JSON response includes `errors[].agent_action` and `next_steps` so the agent can convert the trace into `ContextTrace`.
 
-Top Tools by Token Usage
-  Tool                                Tokens    Calls
-  playwright_with_chunk_browser_snap  12.4K        8
-  filesystem-read_file                 3.2K        5
-  local-search_in_turn                 1.1K        3
+## Agent Skill Distribution
+
+This repository ships an `analyze-agent-context` skill for Cursor, Claude Code, and other Agent Skills / Open Plugins compatible tools.
+
+The skill does not fetch traces. It teaches agents to use `context-profiler` whenever the user asks to analyze a trace, loop, transcript, agent run, context growth, stale context, or tool bloat.
+
+Canonical skill:
+
+```text
+skills/analyze-agent-context/SKILL.md
+```
+
+Plugin manifests:
+
+```text
+.plugin/plugin.json
+.claude-plugin/marketplace.json
+```
+
+## Supported Inputs
+
+Use `context-profiler formats list --json` for the current machine-readable registry.
+
+| Kind | Formats | Confidence |
+|------|---------|------------|
+| Provider request | OpenAI, Anthropic | exact |
+| Observability trace | Langfuse, planned OTel/OpenInference | high |
+| Agent transcript | Cursor JSONL, Claude Code JSONL | partial |
+| Benchmark trajectory | planned agent-trace, agent_trajectories, SWE-agent | dataset-dependent |
+
+For `agent-transcript`, analysis is intentionally marked `partial`: hidden system prompts, rules, tool definitions, MCP schemas, and provider compaction may not be present.
+
+## HTML Report
+
+The HTML report is self-contained and keeps the existing profiler style:
+
+- **Icicle view**: hierarchical token breakdown, zoom, breadcrumb navigation.
+- **Context timeline**: growth over turns, with small markers for large additions/tool-input spikes.
+- **Diff mode**: unchanged / added / removed content between requests.
+- **Tools view**: per-tool token table and invocation details.
+- **Detail panel**: selected node or turn-level diff evidence.
+
+## Example Diagnosis
+
+```json
+{
+  "issues": [
+    {
+      "code": "TOOL_USE_DOMINATES_CONTEXT",
+      "severity": "critical",
+      "message": "Tool inputs dominate the visible context."
+    },
+    {
+      "code": "TOP_TOOL_CONTEXT_HOTSPOT",
+      "message": "ApplyPatch is the largest visible tool context hotspot."
+    }
+  ],
+  "diff_hints": [
+    {
+      "type": "large_addition",
+      "request_index": 76,
+      "evidence": {
+        "added_tokens": 7473,
+        "top_added_tool": "ApplyPatch"
+      }
+    }
+  ]
+}
 ```
 
 ## Examples
 
-The `examples/` directory contains a complete demo using [Toolathlon](https://huggingface.co/datasets/hkust-nlp/Toolathlon-Trajectories) trajectories:
+See [`examples/README.md`](examples/README.md) for runnable fixtures and conversion patterns.
+
+Recommended demo order:
+
+1. Raw OpenAI/Anthropic request.
+2. Cursor or Claude Code transcript.
+3. Langfuse trace export.
+4. Multi-turn academic trajectories such as `pagarsky/agent-trace`, `cx-cmu/agent_trajectories`, or SWE-agent traces.
+
+## What It Does Not Do
+
+- It does not fetch traces from Langfuse, Hugging Face, Cursor, or Claude Code.
+- It does not replay agent loops.
+- It does not execute tools.
+- It does not replace observability platforms.
+- It does not pretend agent transcripts are exact raw provider requests.
+
+## Development
 
 ```bash
-cd examples/
-
-# Convert Toolathlon data to context-profiler input
-python convert_toolathlon.py toolathlon_raw.json --mode snapshot -o snapshot.json
-python convert_toolathlon.py toolathlon_raw.json --mode session -o session.jsonl
-
-# Analyze
-context-profiler analyze snapshot.json
-context-profiler analyze session.jsonl --html report.html
+PYTHONPATH=src uv run --with pytest pytest tests/test_smoke.py -v
 ```
-
-See [`examples/README.md`](examples/README.md) for supported formats and conversion patterns.
 
 ## Acknowledgements
 

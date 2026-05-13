@@ -495,7 +495,17 @@ if (!DATA) {
   throw new Error('No data');
 }
 
-const { metrics, icicle, timeline, session_trees, warnings, tool_analysis } = DATA;
+const { metrics, icicle, timeline, session_trees, warnings, tool_analysis, context_diff } = DATA;
+const diffTransitions = (context_diff && context_diff.transitions) || [];
+const diffHints = (context_diff && context_diff.diff_hints) || [];
+const diffByRequest = new Map(diffTransitions.map(d => [d.request_index, d]));
+const hintsByRequest = new Map();
+for (const hint of diffHints) {
+  if (hint.request_index === undefined || hint.request_index === null) continue;
+  const arr = hintsByRequest.get(hint.request_index) || [];
+  arr.push(hint);
+  hintsByRequest.set(hint.request_index, arr);
+}
 
 /* ════════════════════════════════════════════════════
    HELPERS
@@ -687,6 +697,24 @@ function renderTimeline() {
       ctx.fillStyle = seg.color;
       ctx.fillRect(x, sy, bw, sh);
       base += sh;
+    }
+
+    const diff = diffByRequest.get(d.request_index);
+    const hints = hintsByRequest.get(d.request_index) || [];
+    const hasLargeAddition = hints.some(h => h.type === 'large_addition');
+    const hasToolAddition = hints.some(h => h.type === 'high_tool_use_addition');
+    if (diff && (hasLargeAddition || hasToolAddition)) {
+      const totalH = (total / yMax) * chartH;
+      const markerY = pad.top + chartH - totalH - 5 * dpr;
+      ctx.fillStyle = hasLargeAddition ? '#d29922' : '#8957e5';
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(x + bw / 2, markerY + 5 * dpr);
+      ctx.lineTo(x + bw / 2 - 3 * dpr, markerY);
+      ctx.lineTo(x + bw / 2 + 3 * dpr, markerY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 1;
     }
 
     /* Highlight current round */
@@ -1336,6 +1364,41 @@ function showDetail(node) {
   initJsonToggle(detailRight);
 }
 
+function showRoundDiffDetail(requestIndex) {
+  const diff = diffByRequest.get(requestIndex);
+  if (!diff) return;
+  const hints = hintsByRequest.get(requestIndex) || [];
+  detailPanel.classList.add('open');
+  detailResizeHandle.classList.add('visible');
+  detailPanel.style.height = detailHeight + 'px';
+
+  const hintTags = hints.length
+    ? hints.map(h => `<span class="detail-tag">${escHtml(h.type)}</span>`).join('')
+    : '<span class="detail-tag">no hint</span>';
+  const topAdded = (diff.top_added || []).slice(0, 5);
+
+  detailLeft.innerHTML = `
+    <div class="detail-cell"><div class="detail-label">Request</div><div class="detail-value">#${diff.request_index}</div></div>
+    <div class="detail-cell"><div class="detail-label">Delta</div><div class="detail-value">${fmtK(diff.delta_tokens)} tokens</div></div>
+    <div class="detail-cell"><div class="detail-label">Added</div><div class="detail-value">${fmtK(diff.added_tokens)}</div></div>
+    <div class="detail-cell"><div class="detail-label">Removed</div><div class="detail-value">${fmtK(diff.removed_tokens)}</div></div>
+    <div class="detail-cell"><div class="detail-label">Retained</div><div class="detail-value">${fmtK(diff.retained_tokens)}</div></div>
+    <div class="detail-cell"><div class="detail-label">Top Tool</div><div class="detail-value">${escHtml(diff.top_added_tool || 'none')}</div></div>
+    <div class="detail-cell"><div class="detail-label">Top Artifact</div><div class="detail-value mono" style="color:#666;font-size:10px;">${escHtml(diff.top_added_artifact || 'none')}</div></div>
+    <div class="detail-cell"><div class="detail-label">Hints</div><div class="detail-value">${hintTags}</div></div>
+  `;
+
+  detailRight.innerHTML = `
+    <div class="json-tree">${renderJsonTree({
+      added_by_kind: diff.added_by_kind,
+      removed_by_kind: diff.removed_by_kind,
+      top_added: topAdded,
+      hints,
+    }, 0)}</div>
+  `;
+  initJsonToggle(detailRight);
+}
+
 /* ════════════════════════════════════════════════════
    ROUND SWITCHING
    ════════════════════════════════════════════════════ */
@@ -1355,6 +1418,7 @@ function switchToRound(index) {
   document.getElementById('call-badge').textContent = `Call #${currentRound}`;
 
   showDetail(null);
+  showRoundDiffDetail(currentRound);
   fitViewport();
   renderTimeline();
   renderIcicle();

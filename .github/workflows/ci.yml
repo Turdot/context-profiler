@@ -1,6 +1,37 @@
 name: CI
 
 on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Run smoke tests
+        run: uv run --python ${{ matrix.python-version }} --with pytest pytest tests/test_smoke.py -v
+
+      - name: Smoke test CLI help
+        run: uv run --python ${{ matrix.python-version }} context-profiler --help
+name: CI
+
+on:
   push:
     branches: [main]
   pull_request:

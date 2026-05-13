@@ -1,68 +1,91 @@
 # Examples
 
-End-to-end demo: convert external data → profiler input → analysis report.
+Runnable examples for context analysis harness workflows.
 
-## Supported Input Formats
-
-context-profiler natively accepts these formats (auto-detected):
-
-| Format | Key Signature | Mode |
-|--------|--------------|------|
-| **OpenAI** | `{messages: [{role, content}], tools: [{type: "function", function: {...}}]}` | snapshot |
-| **Anthropic** | `{messages: [{role, content: [{type: "text"/"tool_use"/"tool_result", ...}]}], tools: [{name, input_schema}]}` | snapshot |
-| **Langfuse trace** | `{id, observations: [{type: "GENERATION", input: {messages, tools}}]}` | session |
-| **JSONL** (`.jsonl`) | One OpenAI/Anthropic request per line | session |
-| **Directory** | Folder of `.json` files, each one request | session |
-
-## Demo: Toolathlon Trajectory → Report
-
-[Toolathlon](https://huggingface.co/datasets/hkust-nlp/Toolathlon-Trajectories) is a public dataset with 5000+ agent execution trajectories from 17 LLMs. Its format is **not** directly compatible — this demo shows how to convert and analyze it.
-
-### Raw data
-
-`toolathlon_raw.json` — a GPT-5 agent executing a train ticket planning task:
-- 22 messages, 40 tool definitions, 11 LLM calls
-- ~80K total tokens across all calls
-
-### Step 1: Convert to snapshot (single request)
+The easiest way to explore the current fixtures is from the repository root:
 
 ```bash
-cd examples/
-
-# Convert to a single OpenAI-format request (final context window)
-python convert_toolathlon.py toolathlon_raw.json --mode snapshot -o snapshot.json
-
-# Analyze
-context-profiler analyze snapshot.json
+PYTHONPATH=src uv run context-profiler formats list --json
 ```
 
-### Step 2: Convert to session (per-call snapshots)
+## Raw Provider Request
+
+Use the smoke-test OpenAI-style request fixture:
 
 ```bash
-# Reconstruct each LLM call as a separate snapshot → JSONL
-python convert_toolathlon.py toolathlon_raw.json --mode session -o session.jsonl
-
-# Analyze with session mode (shows context growth timeline)
-context-profiler analyze session.jsonl --html report.html
+PYTHONPATH=src uv run context-profiler diagnose tests/fixtures/repeated_tool_calls.json --format openai --json
+PYTHONPATH=src uv run context-profiler analyze tests/fixtures/repeated_tool_calls.json --format openai --html /tmp/context-profiler-openai.html
 ```
 
-### What you get
+Expected findings:
 
-**Snapshot mode** — token distribution of the final (most bloated) API call:
-- How much of the context is tool definitions vs actual conversation
-- Which tools consume the most tokens
+- `TOOL_USE_DOMINATES_CONTEXT`
+- `TOP_TOOL_CONTEXT_HOTSPOT`
+- `REPEATED_CONTENT_BLOCK`
+- Large repeated `generate_canvas_component.requirements` tool inputs
 
-**Session mode** — context growth timeline across all 11 LLM calls:
-- How the message token count grows from call to call
-- Tool definitions stay constant while messages accumulate
+## Cursor Transcript
+
+Use the synthetic Cursor transcript fixture:
+
+```bash
+PYTHONPATH=src uv run context-profiler diagnose tests/fixtures/cursor_transcript.jsonl --format cursor-jsonl --json
+PYTHONPATH=src uv run context-profiler analyze tests/fixtures/cursor_transcript.jsonl --format cursor-jsonl --html /tmp/context-profiler-cursor.html
+```
+
+This exercises the `agent-transcript` path. The analysis is partial because transcripts may omit hidden prompts, tool definitions, rules, and provider compaction.
+
+## Claude Code Transcript
+
+Use the synthetic Claude Code transcript fixture:
+
+```bash
+PYTHONPATH=src uv run context-profiler diagnose tests/fixtures/claude_code_transcript.jsonl --format claude-code-jsonl --json
+PYTHONPATH=src uv run context-profiler analyze tests/fixtures/claude_code_transcript.jsonl --format claude-code-jsonl --html /tmp/context-profiler-claude.html
+```
+
+## Artifact Churn
+
+Use the artifact churn fixture to see turn-to-turn diff hints:
+
+```bash
+PYTHONPATH=src uv run context-profiler diagnose tests/fixtures/artifact_churn_transcript.jsonl --format cursor-jsonl --json
+```
+
+Expected hint:
+
+```json
+{
+  "type": "possible_artifact_churn",
+  "evidence": {
+    "artifact_key": "src/Button.tsx"
+  }
+}
+```
+
+## Langfuse Export
+
+If another tool has already fetched a Langfuse trace export, pass it directly:
+
+```bash
+context-profiler validate trace.json --format langfuse --json
+context-profiler diagnose trace.json --format langfuse --json
+context-profiler analyze trace.json --format langfuse --html /tmp/context-profiler-langfuse.html
+```
+
+`context-profiler` does not fetch Langfuse data. Use Langfuse's own CLI/API or any other tool to obtain the trace first.
 
 ## Adapting Other Formats
 
-The same pattern works for any external format — write a small script that reshapes the data into OpenAI `{messages, tools}` format:
+Agents should prefer the built-in format registry and schema:
 
-| Source Format | Key Difference | Conversion |
-|--------------|----------------|------------|
-| **ShareGPT** | `conversations`/`from`/`value` | Rename to `messages`/`role`/`content`, map `human`→`user`, `gpt`→`assistant` |
-| **LMSYS / WildChat** | `conversation` instead of `messages` | Rename field |
-| **Toolathlon** | Flat message array + stringified fields | Deserialize strings, split on assistant boundaries for session |
-| **LangSmith** | Hierarchical runs with `inputs`/`outputs` | Extract `run_type=llm` runs, use `inputs.messages` |
+```bash
+context-profiler formats describe agent-trace --json
+context-profiler schema trace --json
+```
+
+Good future public trajectory demos:
+
+- `pagarsky/agent-trace`: `llm_steps[]` plus tool `spans[]`.
+- `cx-cmu/agent_trajectories`: large multi-turn trajectories across several benchmarks.
+- SWE-agent trajectories: coding-agent `thought/action/observation` loops and LM `query` messages.

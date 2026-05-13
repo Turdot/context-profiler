@@ -54,6 +54,7 @@ class TokenCounterAnalyzer(BaseAnalyzer):
             "message_tokens": total_tokens - tool_def_tokens,
             "tool_definition_tokens": tool_def_tokens,
             "system_prompt_tokens": request.system_prompt_tokens,
+            "source_format": request.source_format,
             "by_role": dict(by_role),
             "by_content_type": dict(by_content_type),
             "top_tools_by_tokens": top_tools,

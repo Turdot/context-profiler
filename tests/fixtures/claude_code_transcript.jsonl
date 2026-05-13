@@ -1,0 +1,4 @@
+{"type":"user","message":{"role":"user","content":"Please summarize the latest failure."},"sessionId":"session-1","timestamp":"2026-05-13T00:00:00Z"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"I will inspect the test log."},{"type":"tool_use","id":"toolu_1","name":"Bash","input":{"command":"pytest -q"}}]},"sessionId":"session-1","timestamp":"2026-05-13T00:00:01Z"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_1","content":"FAILED tests/test_app.py::test_submit - AssertionError: expected 200 got 500"}]},"sessionId":"session-1","timestamp":"2026-05-13T00:00:02Z"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"The submit endpoint is returning 500 instead of 200."}]},"sessionId":"session-1","timestamp":"2026-05-13T00:00:03Z"}

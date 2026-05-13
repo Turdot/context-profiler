@@ -1,0 +1,5 @@
+{"role":"user","message":{"content":[{"type":"text","text":"Please inspect this component and update the button copy."}]}}
+{"role":"assistant","message":{"content":[{"type":"text","text":"I will read the component first."},{"type":"tool_use","id":"tool_1","name":"ReadFile","input":{"path":"src/Button.tsx"}}]}}
+{"role":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool_1","content":"export function Button(){ return <button>Old label</button> }"}]}}
+{"role":"assistant","message":{"content":[{"type":"tool_use","id":"tool_2","name":"ApplyPatch","input":{"patch":"*** Begin Patch\n*** Update File: src/Button.tsx\n-Old label\n+New label\n*** End Patch"}}]}}
+{"role":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool_2","content":"Success. Updated src/Button.tsx"}]}}

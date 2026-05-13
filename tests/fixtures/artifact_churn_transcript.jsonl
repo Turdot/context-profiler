@@ -1,0 +1,7 @@
+{"role":"user","message":{"content":[{"type":"text","text":"Please update the button component twice."}]}}
+{"role":"assistant","message":{"content":[{"type":"tool_use","id":"tool_1","name":"ReadFile","input":{"path":"src/Button.tsx"}}]}}
+{"role":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool_1","content":"export function Button(){ return <button>Old</button> }"}]}}
+{"role":"assistant","message":{"content":[{"type":"tool_use","id":"tool_2","name":"ApplyPatch","input":{"patch":"*** Begin Patch\n*** Update File: src/Button.tsx\n@@\n-Old\n+New\n*** End Patch"}}]}}
+{"role":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool_2","content":"Success. Updated src/Button.tsx"}]}}
+{"role":"assistant","message":{"content":[{"type":"tool_use","id":"tool_3","name":"ApplyPatch","input":{"patch":"*** Begin Patch\n*** Update File: src/Button.tsx\n@@\n-New\n+Final\n*** End Patch"}}]}}
+{"role":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tool_3","content":"Success. Updated src/Button.tsx again"}]}}

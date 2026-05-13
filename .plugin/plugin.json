@@ -1,0 +1,11 @@
+{
+  "name": "context-profiler",
+  "description": "Agent context analysis harness for diagnosing context growth, tool bloat, repeated content, and turn-to-turn trace evolution.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Yanpeng Wang"
+  },
+  "skills": [
+    "./skills/analyze-agent-context"
+  ]
+}

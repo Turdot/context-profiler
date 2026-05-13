@@ -9,12 +9,21 @@ from typing import Any
 
 from context_profiler.adapters.auto_detect import detect_adapter
 from context_profiler.adapters.langfuse_adapter import is_langfuse_trace, parse_langfuse_trace
+from context_profiler.adapters.transcript_adapter import (
+    TRANSCRIPT_FORMATS,
+    load_transcript_session,
+    looks_like_transcript_event,
+)
 from context_profiler.analyzers.base import AnalyzerResult, BaseAnalyzer
+from context_profiler.analyzers.content_repeat import ContentRepeatAnalyzer
+from context_profiler.analyzers.field_repeat import FieldRepeatAnalyzer
 from context_profiler.analyzers.token_counter import TokenCounterAnalyzer
 from context_profiler.models import APIRequest, Session
 
 ALL_ANALYZERS: list[BaseAnalyzer] = [
     TokenCounterAnalyzer(),
+    ContentRepeatAnalyzer(),
+    FieldRepeatAnalyzer(),
 ]
 
 
@@ -129,8 +138,14 @@ def load_multi_trace_session(paths: list[Path], format_hint: str | None = None) 
 
 def load_session(path: Path, format_hint: str | None = None) -> Session:
     """Load a session from a JSONL file, directory, or Langfuse trace."""
+    if format_hint == "auto":
+        format_hint = None
+
     if format_hint == "langfuse":
         return load_langfuse_trace(path)
+
+    if format_hint in TRANSCRIPT_FORMATS:
+        return load_transcript_session(path, source_format=format_hint)
 
     langfuse_session = try_load_langfuse(path)
     if langfuse_session is not None:
@@ -151,6 +166,9 @@ def load_session(path: Path, format_hint: str | None = None) -> Session:
                 if not line:
                     continue
                 data = json.loads(line)
+                if idx == 0 and looks_like_transcript_event(data):
+                    source_format = "cursor-jsonl" if "role" in data else "claude-code-jsonl"
+                    return load_transcript_session(path, source_format=source_format)
                 adapter = detect_adapter(data)
                 req = adapter.parse(data)
                 req.request_index = idx
@@ -206,6 +224,7 @@ def profile_session(
         timeline.append({
             "request_index": req.request_index,
             "trace_index": req.trace_index,
+            "source_format": req.source_format,
             "total_tokens": token_result.summary.get("total_input_tokens", 0),
             "system_tokens": token_result.summary.get("system_prompt_tokens", 0),
             "tool_def_tokens": token_result.summary.get("tool_definition_tokens", 0),

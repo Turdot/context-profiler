@@ -18,6 +18,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from context_profiler.context_diff import analyze_context_diff
 from context_profiler.models import APIRequest, BlockType, Session
 from context_profiler.profiler import ProfileResult
 from context_profiler.token_utils import count_tokens
@@ -638,6 +639,7 @@ def _build_report_data(
         turn_boundaries = session.metadata.get("turn_boundaries", [])
 
     tool_analysis = _build_tool_analysis(last_req) if last_req else {"tools": [], "total_context_tokens": 0}
+    context_diff = analyze_context_diff(session)
 
     return {
         "metrics": _build_metrics(result),
@@ -647,6 +649,7 @@ def _build_report_data(
         "turn_boundaries": turn_boundaries,
         "warnings": result.all_warnings,
         "tool_analysis": tool_analysis,
+        "context_diff": context_diff,
     }
 
 
