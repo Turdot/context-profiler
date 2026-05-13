@@ -179,6 +179,11 @@ Recommended demo order:
 3. Langfuse trace export.
 4. Multi-turn academic trajectories such as `pagarsky/agent-trace`, `cx-cmu/agent_trajectories`, or SWE-agent traces.
 
+## Docs
+
+- [CLI harness design](docs/design/cli-harness.md)
+- [Roadmap](docs/roadmap.md)
+
 ## What It Does Not Do
 
 - It does not fetch traces from Langfuse, Hugging Face, Cursor, or Claude Code.
