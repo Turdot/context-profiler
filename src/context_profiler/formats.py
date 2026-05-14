@@ -65,14 +65,17 @@ FORMAT_REGISTRY: dict[str, FormatSpec] = {
         status="supported",
         input_kind="observability-trace",
         confidence="high",
-        required_signals=["observations[]", "GENERATION observations with input.messages"],
+        required_signals=[
+            "observations[]",
+            "GENERATION observations with input.messages, input {role, content}, or string input",
+        ],
         common_sources=["Langfuse UI export", "Langfuse API", "langfuse-cli"],
         analysis_scope=[
             "Per-generation context growth",
             "Visible generation input messages",
             "Tool input/output if captured in generation inputs",
         ],
-        limitations=["Only observations with generation input messages are profiled in the current adapter."],
+        limitations=["Only GENERATION observations with analyzable input content are profiled in the current adapter."],
         agent_conversion_guidance="Use langfuse-cli or API to fetch traces/observations, then pass the exported trace JSON directly.",
         notes=["Current adapter extracts generation inputs and delegates to OpenAI parsing."],
     ),
@@ -136,7 +139,7 @@ FORMAT_REGISTRY: dict[str, FormatSpec] = {
     "agent-trace": FormatSpec(
         name="agent-trace",
         description="Multi-turn agent traces with llm_steps and tool spans.",
-        status="planned",
+        status="supported",
         input_kind="benchmark-trajectory",
         confidence="dataset-dependent",
         required_signals=["llm_steps[]", "spans[]", "tool_input/tool_output"],

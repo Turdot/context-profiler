@@ -54,6 +54,9 @@ def validate_input(path: str, format_hint: str | None = None) -> dict[str, Any]:
         if isinstance(data, dict) and data.get("schema_version") == "0.1" and "runs" in data:
             return _valid_result("context-trace")
         if isinstance(data, dict) and is_langfuse_trace(data):
+            session = parse_langfuse_trace(data)
+            if not session.requests:
+                return _invalid_langfuse_result(session)
             return _valid_result("langfuse")
         if isinstance(data, dict):
             adapter = detect_adapter(data) if format_hint is None else None
@@ -88,6 +91,26 @@ def _invalid_result(code: str, message: str) -> dict[str, Any]:
                 "message": message,
                 "expected": "OpenAI/Anthropic request, Langfuse trace, supported agent transcript JSONL, or ContextTrace.",
                 "agent_action": "Inspect formats/schema and convert the input into ContextTrace if no supported format matches.",
+            }
+        ],
+        "next_steps": NEXT_STEPS,
+    }
+
+
+def _invalid_langfuse_result(session: Session) -> dict[str, Any]:
+    warnings = session.metadata.get("warnings") or [
+        "Langfuse trace did not contain analyzable generation input messages."
+    ]
+    return {
+        "valid": False,
+        "detected_format": "langfuse",
+        "errors": [
+            {
+                "code": "NO_ANALYZABLE_GENERATIONS",
+                "message": "Langfuse trace was recognized, but no generation input messages could be analyzed.",
+                "expected": "Langfuse GENERATION observations with input.messages, input {role, content}, or string input.",
+                "agent_action": "Fetch full Langfuse trace observations or normalize generation inputs into ContextTrace before running diagnose.",
+                "warnings": warnings,
             }
         ],
         "next_steps": NEXT_STEPS,

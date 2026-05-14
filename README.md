@@ -46,8 +46,14 @@ Related work:
 
 ## Install
 
+For agent/CLI use, prefer an isolated executable install:
+
 ```bash
-pip install context-profiler
+pipx install context-profiler
+# or
+uv tool install context-profiler
+context-profiler --version
+which -a context-profiler  # ensure a stale executable is not shadowing pipx/uv
 ```
 
 Or install from source:
@@ -55,7 +61,9 @@ Or install from source:
 ```bash
 git clone https://github.com/Turdot/context-profiler.git
 cd context-profiler
-pip install -e .
+uv tool install -e .
+# for local development in this repo:
+PYTHONPATH=src uv run context-profiler --version
 ```
 
 ## Quick Start
@@ -82,6 +90,14 @@ context-profiler diagnose trace.json --format langfuse --json
 context-profiler analyze trace.json --format langfuse --html report.html
 ```
 
+Analyze a Langfuse trace fetched by Langfuse CLI:
+
+```bash
+npx langfuse-cli api traces get <trace-id> --fields core,io,observations --json \
+  | context-profiler diagnose - --format langfuse --json
+```
+
+
 Generate an interactive report:
 
 ```bash
@@ -105,8 +121,10 @@ context-profiler schema diagnosis --json
 context-profiler validate trace.json --format auto --json
 context-profiler normalize trace.json --from auto --json
 
-# Diagnose for agent consumption
+# Diagnose for agent consumption; '-' reads JSON/JSONL from stdin
 context-profiler diagnose trace.json --format auto --json
+npx langfuse-cli api traces get <trace-id> --fields core,io,observations --json \
+  | context-profiler diagnose - --format langfuse --json
 ```
 
 If validation fails, the JSON response includes `errors[].agent_action` and `next_steps` so the agent can convert the trace into `ContextTrace`.
@@ -115,7 +133,7 @@ If validation fails, the JSON response includes `errors[].agent_action` and `nex
 
 This repository ships an `analyze-agent-context` skill for Cursor, Claude Code, and other Agent Skills / Open Plugins compatible tools.
 
-The skill does not fetch traces. It teaches agents to use `context-profiler` whenever the user asks to analyze a trace, loop, transcript, agent run, context growth, stale context, or tool bloat.
+The skill does not make `context-profiler` fetch traces itself. It teaches agents to use Langfuse tooling to fetch Langfuse trace ids, then route the fetched JSON into `context-profiler` for diagnosis whenever the user asks to analyze a trace, loop, transcript, agent run, context growth, stale context, or tool bloat.
 
 Canonical skill:
 
@@ -180,6 +198,7 @@ The HTML report is self-contained and keeps the existing profiler style:
   ]
 }
 ```
+
 
 ## Examples
 

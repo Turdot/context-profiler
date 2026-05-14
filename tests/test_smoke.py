@@ -9,6 +9,25 @@ from context_profiler.context_diff import _artifact_from_text
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
+def _langfuse_trace(input_payload):
+    return {
+        "id": "trace-test",
+        "projectId": "project-test",
+        "name": "Claude Code - Turn 1",
+        "timestamp": "2026-05-14T03:22:15.000Z",
+        "observations": [
+            {
+                "id": "generation-test",
+                "type": "GENERATION",
+                "name": "Claude Response",
+                "startTime": "2026-05-14T03:22:15.000Z",
+                "input": input_payload,
+                "model": "claude",
+            }
+        ],
+    }
+
+
 def test_import():
     import context_profiler
     assert hasattr(context_profiler, "__version__")
@@ -119,6 +138,17 @@ def test_validate_unknown_shape_guides_agent(tmp_path):
     assert any("schema trace" in step for step in data["next_steps"])
 
 
+def test_validate_langfuse_without_analyzable_generation_is_invalid(tmp_path):
+    trace = tmp_path / "unsupported_langfuse.json"
+    trace.write_text(json.dumps(_langfuse_trace({"unexpected": "shape"})), encoding="utf-8")
+    runner = CliRunner()
+    result = runner.invoke(main, ["validate", str(trace), "--format", "langfuse", "--json"])
+    assert result.exit_code == 1
+    data = json.loads(result.output)
+    assert data["valid"] is False
+    assert data["errors"][0]["code"] == "NO_ANALYZABLE_GENERATIONS"
+
+
 def test_normalize_known_fixture_json():
     snapshot = FIXTURES / "repeated_tool_calls.json"
     runner = CliRunner()
@@ -138,6 +168,33 @@ def test_diagnose_json_contains_issues():
     assert data["schema_version"] == "0.1"
     assert "issues" in data
     assert "summary" in data
+
+
+def test_diagnose_langfuse_simple_generation_input_from_stdin():
+    trace = _langfuse_trace({"role": "user", "content": "hello"})
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        ["diagnose", "-", "--format", "langfuse", "--json"],
+        input=json.dumps(trace),
+    )
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data["mode"] == "session"
+    assert data["analysis_scope"]["format"] == "langfuse"
+    assert data["analysis_scope"]["input_kind"] == "observability-trace"
+
+
+def test_analyze_langfuse_from_stdin():
+    trace = _langfuse_trace({"messages": [{"role": "user", "content": "hello"}]})
+    runner = CliRunner()
+    result = runner.invoke(
+        main,
+        ["analyze", "-", "--format", "langfuse"],
+        input=json.dumps(trace),
+    )
+    assert result.exit_code == 0
+    assert "Token Distribution" in result.output
 
 
 def test_analyze_cursor_transcript_html(tmp_path):

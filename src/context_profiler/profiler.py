@@ -208,13 +208,15 @@ def profile_session(
     if analyzers is None:
         analyzers = ALL_ANALYZERS
 
+    session_warnings = list(session.metadata.get("warnings") or [])
     if not session.requests:
-        return ProfileResult(source=source, mode="session")
+        return ProfileResult(source=source, mode="session", all_warnings=session_warnings)
 
     # Analyze the last (most bloated) request
     last_request = session.requests[-1]
     result = profile_request(last_request, source=source, analyzers=analyzers)
     result.mode = "session"
+    result.all_warnings.extend(session_warnings)
 
     # Build timeline across all requests
     timeline: list[dict[str, Any]] = []

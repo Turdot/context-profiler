@@ -26,7 +26,7 @@ def _severity_for_ratio(ratio: float) -> str:
 
 def diagnose_result(result: ProfileResult, session: Session | None = None) -> dict[str, Any]:
     issues: list[dict[str, Any]] = []
-    scope = _analysis_scope(result)
+    scope = _analysis_scope(result, session=session)
     diff = analyze_context_diff(session)
 
     token = result.analyzer_results.get("token_counter")
@@ -125,8 +125,10 @@ def diagnose_result(result: ProfileResult, session: Session | None = None) -> di
     }
 
 
-def _analysis_scope(result: ProfileResult) -> dict[str, Any]:
-    source_format = _source_format(result)
+def _analysis_scope(result: ProfileResult, session: Session | None = None) -> dict[str, Any]:
+    source_format = _source_format(result) or (
+        session.metadata.get("source_format") if session is not None else None
+    )
     if source_format:
         try:
             spec = describe_format(source_format)

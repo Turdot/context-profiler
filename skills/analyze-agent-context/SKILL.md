@@ -9,13 +9,29 @@ Use `context-profiler` as the trace-source agnostic context analysis harness.
 
 ## Core Rule
 
-Do not fetch traces unless the user asks you to. If another tool already fetched trace data, use that local file or recent JSON output. The source can be Langfuse CLI, Claude Code, Cursor, OpenTelemetry, raw OpenAI/Anthropic requests, or an academic trajectory dataset.
+Do not fetch traces unless the user asks you to. If the user provides a Langfuse trace id and asks to inspect, debug, or analyze it, use the Langfuse skill/CLI to fetch that trace, then hand the fetched JSON to `context-profiler`. Do not manually summarize the raw trace before running `context-profiler`.
+
+If another tool already fetched trace data, use that local file or recent JSON output. The source can be Langfuse CLI, Claude Code, Cursor, OpenTelemetry, raw OpenAI/Anthropic requests, or an academic trajectory dataset.
+
+Before analysis, verify the CLI is callable:
+
+```bash
+context-profiler --version
+```
+
+If the command is missing or its entry point is broken, ask the user to install it with `pipx install context-profiler` or `uv tool install context-profiler`.
+If `which -a context-profiler` shows a stale broken executable before the `pipx`/`uv tool` executable, use the working executable path or fix `PATH` before continuing.
 
 ## Workflow
 
 1. Identify the available trace or loop data:
    - File path supplied by user.
    - Recent JSON output from another CLI, such as `langfuse-cli`.
+   - Langfuse trace id supplied by user. Fetch it with Langfuse tooling first:
+     ```bash
+     npx langfuse-cli api traces get <trace-id> --fields core,io,observations --json \
+       | context-profiler diagnose - --format langfuse --json
+     ```
    - Current Cursor transcript under `~/.cursor/projects/**/agent-transcripts/**/*.jsonl`.
    - Current Claude Code transcript under `~/.claude/projects/**/*.jsonl`.
 
