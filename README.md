@@ -14,8 +14,6 @@ Bring any agent trace, loop, transcript, or raw provider request. `context-profi
 
 Agent systems fail quietly when context grows too large, repeats stale observations, carries verbose tool payloads, or churns on the same artifact for many turns. Observability tools tell you what happened. `context-profiler` focuses on what happened to the context.
 
-This direction is also motivated by recent work on long-horizon coding agents, including ByteDance Seed's context-folding research, which highlights that agent performance depends not only on model capability but also on how intermediate observations, repeated context, and compressed histories are retained across turns.
-
 It is designed for both humans and agents:
 
 - Humans get an interactive HTML report with timeline, icicle, diff, and tool views.
@@ -32,6 +30,19 @@ It is designed for both humans and agents:
 - **Repeated tool inputs**: large repeated tool arguments.
 - **Artifact churn**: the same file/component/path appears across many tool calls.
 - **Partial-scope warnings**: transcripts are useful, but not raw provider requests.
+
+## Research Context
+
+`context-profiler` is motivated by recent work showing that long-horizon agents are constrained not only by model quality, but also by how their working context is retained, compressed, and reused across turns.
+
+Related work:
+
+- **ByteDance Seed — _Scaling Long-Horizon LLM Agent via Context-Folding_**  
+  Studies context management for long-horizon agents through folding and summarizing intermediate sub-trajectories. This motivates `context-profiler`'s focus on turn-to-turn context diffs, retained observations, and compression/pruning evidence.
+- **SWE-agent — _Agent-Computer Interfaces Enable Automated Software Engineering_**  
+  Shows the importance of the agent-computer interface for software-engineering agents, motivating analysis of tool calls, terminal output, and artifact churn.
+- **WebArena — _A Realistic Web Environment for Building Autonomous Agents_**  
+  Demonstrates the value of realistic multi-step agent trajectories, motivating support for loop/transcript analysis rather than only single prompt snapshots.
 
 ## Install
 
@@ -206,7 +217,6 @@ This project is inspired by and learned from:
 
 - [context-lens](https://github.com/larsderidder/context-lens) — local proxy for capturing and visualizing LLM API calls
 - [ContextFlame](https://github.com/jcgs2503/contextflame) — flamegraph-based token profiling for Claude Code
-- ByteDance Seed's work on long-horizon agent context management, including *Scaling Long-Horizon LLM Agent via Context-Folding*
 - [speedscope](https://www.speedscope.app/) — the icicle / flamegraph UI design is inspired by speedscope's interactive visualization
 
 ## License
