@@ -73,7 +73,7 @@ context-profiler diagnose trace.json --format langfuse --json
 context-profiler analyze trace.json --format langfuse --html /tmp/context-profiler-langfuse.html
 ```
 
-`context-profiler` does not fetch Langfuse data. Use Langfuse's own CLI/API or any other tool to obtain the trace first.
+`context-profiler` does not fetch Langfuse data. Use the Langfuse public API via `curl` or another external tool to obtain the trace first. Prefer the public API for complete trace analysis because CLI output can omit fields needed to inspect nested observations and generations.
 
 ## Academic AgentTrace
 

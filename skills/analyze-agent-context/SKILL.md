@@ -1,6 +1,6 @@
 ---
 name: analyze-agent-context
-description: Analyze LLM agent traces, loops, transcripts, Langfuse exports, OpenTelemetry spans, or raw provider requests with context-profiler. Use when the user asks to analyze/debug/explain a trace, agent run, context growth, stale context, tool bloat, or a recently fetched trace from another CLI.
+description: Analyze LLM agent traces, loops, transcripts, Langfuse exports, OpenTelemetry spans, or raw provider requests with context-profiler. Use when the user asks to analyze/debug/explain a trace, agent run, context growth, stale context, tool bloat, or recently fetched trace JSON.
 ---
 
 # Analyze Agent Context

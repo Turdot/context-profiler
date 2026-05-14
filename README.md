@@ -90,11 +90,25 @@ context-profiler diagnose trace.json --format langfuse --json
 context-profiler analyze trace.json --format langfuse --html report.html
 ```
 
-Analyze a Langfuse trace fetched by Langfuse CLI:
+Fetch a Langfuse trace through the public API, then analyze it:
 
 ```bash
-npx langfuse-cli api traces get <trace-id> --fields core,io,observations --json \
-  | context-profiler diagnose - --format langfuse --json
+TRACE_ID="<trace-id>"
+HOST="${LANGFUSE_HOST%/}"
+OUT="/tmp/langfuse-trace-${TRACE_ID}"
+mkdir -p "$OUT"
+
+curl -fsS \
+  -u "$LANGFUSE_PUBLIC_KEY:$LANGFUSE_SECRET_KEY" \
+  "$HOST/api/public/traces/$TRACE_ID" \
+  -o "$OUT/trace.json"
+
+curl -fsS \
+  -u "$LANGFUSE_PUBLIC_KEY:$LANGFUSE_SECRET_KEY" \
+  "$HOST/api/public/observations?traceId=$TRACE_ID&limit=100&page=1" \
+  -o "$OUT/observations-page-1.json"
+
+context-profiler diagnose "$OUT/trace.json" --format langfuse --json
 ```
 
 Analyze a public academic agent trajectory:
@@ -129,8 +143,6 @@ context-profiler normalize trace.json --from auto --json
 
 # Diagnose for agent consumption; '-' reads JSON/JSONL from stdin
 context-profiler diagnose trace.json --format auto --json
-npx langfuse-cli api traces get <trace-id> --fields core,io,observations --json \
-  | context-profiler diagnose - --format langfuse --json
 ```
 
 If validation fails, the JSON response includes `errors[].agent_action` and `next_steps` so the agent can convert the trace into `ContextTrace`.
@@ -139,7 +151,7 @@ If validation fails, the JSON response includes `errors[].agent_action` and `nex
 
 This repository ships an `analyze-agent-context` skill for Cursor, Claude Code, and other Agent Skills / Open Plugins compatible tools.
 
-The skill does not make `context-profiler` fetch traces itself. It teaches agents to use Langfuse tooling to fetch Langfuse trace ids, then route the fetched JSON into `context-profiler` for diagnosis whenever the user asks to analyze a trace, loop, transcript, agent run, context growth, stale context, or tool bloat.
+The skill does not make `context-profiler` fetch traces itself. It teaches agents to fetch Langfuse trace ids with the Langfuse public API via `curl`, then route the fetched JSON into `context-profiler` for diagnosis whenever the user asks to analyze a trace, loop, transcript, agent run, context growth, stale context, or tool bloat. It intentionally avoids `langfuse-cli` for trace fetching because the CLI may omit fields needed for complete analysis.
 
 Canonical skill:
 

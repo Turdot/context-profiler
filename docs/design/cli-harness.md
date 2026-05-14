@@ -13,7 +13,7 @@ The CLI is designed for two users at once:
 
 Good upstream sources include:
 
-- Langfuse CLI or API exports
+- Langfuse public API exports
 - OpenTelemetry / OpenInference span exports
 - raw OpenAI or Anthropic request logs
 - Cursor or Claude Code local transcripts
@@ -41,7 +41,7 @@ context-profiler analyze <file|-> --format auto --html report.html
 
 The style is inspired by mature agent-friendly CLIs:
 
-- Langfuse CLI: schema-driven API access
+- Langfuse API: observability trace access
 - kubectl: resource discovery and explainability
 - Terraform: validate/plan-style machine output
 - GitHub CLI: human commands plus machine-readable JSON

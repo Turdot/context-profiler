@@ -69,14 +69,14 @@ FORMAT_REGISTRY: dict[str, FormatSpec] = {
             "observations[]",
             "GENERATION observations with input.messages, input {role, content}, or string input",
         ],
-        common_sources=["Langfuse UI export", "Langfuse API", "langfuse-cli"],
+        common_sources=["Langfuse UI export", "Langfuse public API"],
         analysis_scope=[
             "Per-generation context growth",
             "Visible generation input messages",
             "Tool input/output if captured in generation inputs",
         ],
         limitations=["Only GENERATION observations with analyzable input content are profiled in the current adapter."],
-        agent_conversion_guidance="Use langfuse-cli or API to fetch traces/observations, then pass the exported trace JSON directly.",
+        agent_conversion_guidance="Use the Langfuse public API via curl to fetch traces/observations, then pass the exported trace JSON directly. Avoid langfuse-cli for trace analysis because it may omit nested observation or generation fields.",
         notes=["Current adapter extracts generation inputs and delegates to OpenAI parsing."],
     ),
     "cursor-jsonl": FormatSpec(

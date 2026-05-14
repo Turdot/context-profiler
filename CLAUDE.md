@@ -51,7 +51,7 @@ PYTHONPATH=src uv run context-profiler analyze tests/fixtures/cursor_transcript.
 
 ## Product Boundaries
 
-Do not add provider-specific fetch clients to core. Agents can use Langfuse CLI, SDKs, Hugging Face tooling, or local transcript discovery to obtain data, then pass files or stdin to `context-profiler`.
+Do not add provider-specific fetch clients to core. Agents can use Langfuse public API exports via `curl`, SDKs, Hugging Face tooling, or local transcript discovery to obtain data, then pass files or stdin to `context-profiler`. Prefer direct Langfuse public API exports over `langfuse-cli` for trace analysis because the CLI can omit fields needed for nested observations and generations.
 
 Do not make Toolathlon a first-class multi-turn demo. Prefer genuinely multi-turn datasets such as `pagarsky/agent-trace`, `cx-cmu/agent_trajectories`, and SWE-agent trajectories for future research examples.
 
