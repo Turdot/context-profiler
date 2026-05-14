@@ -13,6 +13,31 @@ Do not fetch traces unless the user asks you to. If the user provides a Langfuse
 
 If another tool already fetched trace data, use that local file or recent JSON output. The source can be Langfuse public API JSON, Claude Code, Cursor, OpenTelemetry, raw OpenAI/Anthropic requests, or an academic trajectory dataset.
 
+## Analysis Gate
+
+The first analysis command must be `context-profiler validate`, `context-profiler diagnose`, or `context-profiler analyze`.
+
+Do not write Python scripts, notebooks, `jq` summaries, or ad hoc JSON parsers to analyze the trace before running `context-profiler`. Python is allowed only for narrow operational tasks such as checking whether local settings contain credential keys, or after `context-profiler validate` fails and returns `errors[].agent_action` requiring conversion to `ContextTrace`. After any conversion, pipe the converted data back into `context-profiler`; do not present the conversion script's own findings as the analysis.
+
+## Langfuse Credentials
+
+Never ask the user to paste API keys or secrets into chat. It is acceptable for the user to provide credentials through local environment variables or a local settings file, but do not expose those values in model-visible output.
+
+For Langfuse trace fetching, first use the current process environment:
+
+- `LANGFUSE_HOST` or `LANGFUSE_BASE_URL`
+- `LANGFUSE_PUBLIC_KEY`
+- `LANGFUSE_SECRET_KEY`
+
+If any value is missing, check whether local Claude settings files contain the needed keys without printing their contents or values:
+
+- `.claude/settings.local.json`
+- `.claude/settings.json`
+- `~/.claude/settings.local.json`
+- `~/.claude/settings.json`
+
+Only inspect the `env` object for key presence. Do not load, export, print, summarize, or copy secret values from settings files into chat, terminal output, reports, or generated commands. If credentials are present in a local settings file but not in the current process environment, ask the user to run the agent from that configured environment or explicitly approve using that local file as the credential source. If credentials still cannot be found, ask the user to export them in the current shell or point to a local settings file; do not ask them to paste values into chat.
+
 Before analysis, verify the CLI is callable:
 
 ```bash
@@ -34,6 +59,8 @@ If `which -a context-profiler` shows a stale broken executable before the `pipx`
      OUT="/tmp/langfuse-trace-${TRACE_ID}"
      mkdir -p "$OUT"
 
+     export LANGFUSE_HOST="${LANGFUSE_HOST:-${LANGFUSE_BASE_URL:-}}"
+
      for v in LANGFUSE_HOST LANGFUSE_PUBLIC_KEY LANGFUSE_SECRET_KEY; do
        if [ -n "${!v}" ]; then echo "$v=set"; else echo "$v=missing"; fi
      done
@@ -50,7 +77,7 @@ If `which -a context-profiler` shows a stale broken executable before the `pipx`
 
      context-profiler diagnose "$OUT/trace.json" --format langfuse --json
      ```
-     Do not print or inline API keys. If any required environment variable is missing, ask the user to set it without pasting secrets into chat. For traces with more than 100 observations, paginate the observations endpoint before analysis.
+     Do not print or inline API keys. Do not automatically export secrets from local Claude settings. If any required value is still missing from the current environment, ask the user to run from the configured environment, approve using the local settings file as a credential source, or export the values in the current shell. For traces with more than 100 observations, paginate the observations endpoint before analysis. Do not analyze `trace.json` or `observations-page-*.json` directly with Python before running `context-profiler`.
    - Current Cursor transcript under `~/.cursor/projects/**/agent-transcripts/**/*.jsonl`.
    - Current Claude Code transcript under `~/.claude/projects/**/*.jsonl`.
 
@@ -69,8 +96,9 @@ If `which -a context-profiler` shows a stale broken executable before the `pipx`
 4. If validation fails:
    - Read `next_steps` and `errors[].agent_action`.
    - Use `context-profiler schema trace --json`.
-   - Convert the data into `ContextTrace` yourself, then pipe it back into `context-profiler`.
+   - Convert the data into `ContextTrace` only when validation says conversion is needed, then pipe it back into `context-profiler`.
    - Users should not manually reshape traces.
+   - Do not summarize findings from raw JSON or conversion code; findings should come from `context-profiler` output.
 
 5. Run machine-readable diagnosis:
    ```bash
