@@ -9,9 +9,9 @@ Use `context-profiler` as the trace-source agnostic context analysis harness.
 
 ## Core Rule
 
-Do not fetch traces unless the user asks you to. If the user provides a Langfuse trace id and asks to inspect, debug, or analyze it, use the Langfuse skill/CLI to fetch that trace, then hand the fetched JSON to `context-profiler`. Do not manually summarize the raw trace before running `context-profiler`.
+Do not fetch traces unless the user asks you to. If the user provides a Langfuse trace id and asks to inspect, debug, or analyze it, fetch that trace through the Langfuse public API with `curl`, then hand the fetched JSON to `context-profiler`. Do not use `langfuse-cli` for trace fetching because it may omit fields needed for complete trace analysis. Do not manually summarize the raw trace before running `context-profiler`.
 
-If another tool already fetched trace data, use that local file or recent JSON output. The source can be Langfuse CLI, Claude Code, Cursor, OpenTelemetry, raw OpenAI/Anthropic requests, or an academic trajectory dataset.
+If another tool already fetched trace data, use that local file or recent JSON output. The source can be Langfuse public API JSON, Claude Code, Cursor, OpenTelemetry, raw OpenAI/Anthropic requests, or an academic trajectory dataset.
 
 Before analysis, verify the CLI is callable:
 
@@ -26,12 +26,31 @@ If `which -a context-profiler` shows a stale broken executable before the `pipx`
 
 1. Identify the available trace or loop data:
    - File path supplied by user.
-   - Recent JSON output from another CLI, such as `langfuse-cli`.
-   - Langfuse trace id supplied by user. Fetch it with Langfuse tooling first:
+   - Recent JSON output from another tool.
+   - Langfuse trace id supplied by user. Fetch it with `curl` from the Langfuse public API first:
      ```bash
-     npx langfuse-cli api traces get <trace-id> --fields core,io,observations --json \
-       | context-profiler diagnose - --format langfuse --json
+     TRACE_ID="<trace-id>"
+     HOST="${LANGFUSE_HOST%/}"
+     OUT="/tmp/langfuse-trace-${TRACE_ID}"
+     mkdir -p "$OUT"
+
+     for v in LANGFUSE_HOST LANGFUSE_PUBLIC_KEY LANGFUSE_SECRET_KEY; do
+       if [ -n "${!v}" ]; then echo "$v=set"; else echo "$v=missing"; fi
+     done
+
+     curl -fsS \
+       -u "$LANGFUSE_PUBLIC_KEY:$LANGFUSE_SECRET_KEY" \
+       "$HOST/api/public/traces/$TRACE_ID" \
+       -o "$OUT/trace.json"
+
+     curl -fsS \
+       -u "$LANGFUSE_PUBLIC_KEY:$LANGFUSE_SECRET_KEY" \
+       "$HOST/api/public/observations?traceId=$TRACE_ID&limit=100&page=1" \
+       -o "$OUT/observations-page-1.json"
+
+     context-profiler diagnose "$OUT/trace.json" --format langfuse --json
      ```
+     Do not print or inline API keys. If any required environment variable is missing, ask the user to set it without pasting secrets into chat. For traces with more than 100 observations, paginate the observations endpoint before analysis.
    - Current Cursor transcript under `~/.cursor/projects/**/agent-transcripts/**/*.jsonl`.
    - Current Claude Code transcript under `~/.claude/projects/**/*.jsonl`.
 
