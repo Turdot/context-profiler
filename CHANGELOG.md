@@ -12,6 +12,7 @@
   - `normalize`
   - `diagnose`
 - Cursor and Claude Code transcript JSONL ingestion.
+- `pagarsky/agent-trace` sample ingestion via `--format agent-trace`.
 - Agent-readable diagnosis reports with input scope, confidence, limitations, issue codes, and recommendations.
 - Context diff evidence:
   - turn-to-turn added/removed/retained token summary

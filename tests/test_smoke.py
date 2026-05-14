@@ -286,3 +286,25 @@ def test_skill_distribution_manifests():
     marketplace_data = json.loads(claude_marketplace.read_text())
     assert marketplace_data["plugins"][0]["name"] == "context-profiler"
     assert marketplace_data["plugins"][0]["skills"] == ["./skills/analyze-agent-context"]
+
+
+def test_diagnose_agent_trace_sample_json():
+    sample = Path(__file__).parents[1] / "examples" / "agent-trace" / "sample.json"
+    runner = CliRunner()
+    result = runner.invoke(main, ["diagnose", str(sample), "--format", "agent-trace", "--json"])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data["analysis_scope"]["format"] == "agent-trace"
+    assert data["mode"] == "session"
+    assert data["diff_summary"]["transition_count"] > 0
+    assert data["diff_hints"]
+
+
+def test_analyze_agent_trace_sample_html(tmp_path):
+    sample = Path(__file__).parents[1] / "examples" / "agent-trace" / "sample.json"
+    out = tmp_path / "agent-trace-report.html"
+    runner = CliRunner()
+    result = runner.invoke(main, ["analyze", str(sample), "--format", "agent-trace", "--html", str(out)])
+    assert result.exit_code == 0
+    assert out.exists()
+    assert "<html" in out.read_text().lower()

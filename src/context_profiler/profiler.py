@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from context_profiler.adapters.auto_detect import detect_adapter
+from context_profiler.adapters.agent_trace_adapter import is_agent_trace, load_agent_trace_session
 from context_profiler.adapters.langfuse_adapter import is_langfuse_trace, parse_langfuse_trace
 from context_profiler.adapters.transcript_adapter import (
     TRANSCRIPT_FORMATS,
@@ -95,6 +96,20 @@ def try_load_langfuse(path: Path) -> Session | None:
     return None
 
 
+def try_load_agent_trace(path: Path) -> Session | None:
+    """Try to load as an AgentTrace trajectory file."""
+    if not path.is_file() or path.suffix not in (".json",):
+        return None
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        if is_agent_trace(data):
+            return load_agent_trace_session(path)
+    except (json.JSONDecodeError, KeyError):
+        pass
+    return None
+
+
 def load_multi_trace_session(paths: list[Path], format_hint: str | None = None) -> Session:
     """Load multiple Langfuse trace files and merge into a single Session.
 
@@ -144,12 +159,19 @@ def load_session(path: Path, format_hint: str | None = None) -> Session:
     if format_hint == "langfuse":
         return load_langfuse_trace(path)
 
+    if format_hint == "agent-trace":
+        return load_agent_trace_session(path)
+
     if format_hint in TRANSCRIPT_FORMATS:
         return load_transcript_session(path, source_format=format_hint)
 
     langfuse_session = try_load_langfuse(path)
     if langfuse_session is not None:
         return langfuse_session
+
+    agent_trace_session = try_load_agent_trace(path)
+    if agent_trace_session is not None:
+        return agent_trace_session
 
     requests: list[APIRequest] = []
 

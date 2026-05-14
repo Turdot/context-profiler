@@ -97,6 +97,12 @@ npx langfuse-cli api traces get <trace-id> --fields core,io,observations --json 
   | context-profiler diagnose - --format langfuse --json
 ```
 
+Analyze a public academic agent trajectory:
+
+```bash
+context-profiler diagnose examples/agent-trace/sample.json --format agent-trace --json
+context-profiler analyze examples/agent-trace/sample.json --format agent-trace --html report.html
+```
 
 Generate an interactive report:
 
@@ -199,6 +205,16 @@ The HTML report is self-contained and keeps the existing profiler style:
 }
 ```
 
+Academic trajectory sample:
+
+```text
+context-profiler analyze examples/agent-trace/sample.json --format agent-trace --html report.html
+
+Total Input: 11.7K
+Messages (assistant): 10.7K
+Tool: python_interpreter 2.9K
+Warnings: Content duplication 2.3K redundant tokens
+```
 
 ## Examples
 

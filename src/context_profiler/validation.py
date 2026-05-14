@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from context_profiler.adapters.auto_detect import detect_adapter
+from context_profiler.adapters.agent_trace_adapter import is_agent_trace
 from context_profiler.adapters.langfuse_adapter import is_langfuse_trace, parse_langfuse_trace
 from context_profiler.adapters.transcript_adapter import TRANSCRIPT_FORMATS
 from context_profiler.models import APIRequest, Session
@@ -58,6 +59,8 @@ def validate_input(path: str, format_hint: str | None = None) -> dict[str, Any]:
             if not session.requests:
                 return _invalid_langfuse_result(session)
             return _valid_result("langfuse")
+        if isinstance(data, dict) and is_agent_trace(data):
+            return _valid_result("agent-trace")
         if isinstance(data, dict):
             adapter = detect_adapter(data) if format_hint is None else None
             return _valid_result(format_hint or _adapter_format_name(adapter))
@@ -142,6 +145,8 @@ def normalize_input(path: str, format_hint: str | None = None) -> dict[str, Any]
 
     if isinstance(data, dict) and is_langfuse_trace(data):
         session = parse_langfuse_trace(data)
+    elif isinstance(data, dict) and is_agent_trace(data):
+        session = load_session(Path(path), format_hint="agent-trace")
     elif path != "-":
         session = load_session(Path(path), format_hint=format_hint)
     elif isinstance(data, dict):

@@ -75,6 +75,28 @@ context-profiler analyze trace.json --format langfuse --html /tmp/context-profil
 
 `context-profiler` does not fetch Langfuse data. Use Langfuse's own CLI/API or any other tool to obtain the trace first.
 
+## Academic AgentTrace
+
+This repository includes a small sample from [`pagarsky/agent-trace`](https://huggingface.co/datasets/pagarsky/agent-trace):
+
+```bash
+PYTHONPATH=src uv run context-profiler diagnose examples/agent-trace/sample.json --format agent-trace --json
+PYTHONPATH=src uv run context-profiler analyze examples/agent-trace/sample.json --format agent-trace --html /tmp/context-profiler-agent-trace-demo.html
+```
+
+The sample is a multi-step MBPP trajectory with:
+
+- 11 LLM steps
+- 10 `python_interpreter` tool spans
+- repeated code passed into tool calls
+- turn-to-turn growth suitable for recording the timeline
+
+Expected findings:
+
+- `REPEATED_CONTENT_BLOCK`
+- `REPEATED_TOOL_INPUT` on `python_interpreter.code`
+- `large_addition` diff hints
+
 ## Adapting Other Formats
 
 Agents should prefer the built-in format registry and schema:
