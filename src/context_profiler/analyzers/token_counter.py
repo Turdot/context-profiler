@@ -6,6 +6,7 @@ from collections import defaultdict
 
 from context_profiler.analyzers.base import AnalyzerResult, BaseAnalyzer
 from context_profiler.models import APIRequest, BlockType, Role
+from context_profiler.pricing import estimate_cost
 
 
 class TokenCounterAnalyzer(BaseAnalyzer):
@@ -60,12 +61,19 @@ class TokenCounterAnalyzer(BaseAnalyzer):
         tool_use_tokens = by_content_type.get("tool_use", 0)
         tool_result_tokens = by_content_type.get("tool_result", 0)
 
+        cost = estimate_cost(
+            input_tokens=total_tokens,
+            output_tokens=0,
+            model=request.model,
+        )
+
         summary = {
             "total_input_tokens": total_tokens,
             "message_tokens": total_tokens - tool_def_tokens,
             "tool_definition_tokens": tool_def_tokens,
             "system_prompt_tokens": request.system_prompt_tokens,
             "source_format": request.source_format,
+            "model": request.model,
             "by_role": dict(by_role),
             "by_content_type": dict(by_content_type),
             "tool_use_tokens": tool_use_tokens,
@@ -75,6 +83,9 @@ class TokenCounterAnalyzer(BaseAnalyzer):
             "top_tools_by_result_tokens": top_tools_result,
             "tool_definitions": tool_defs_detail,
         }
+
+        if cost is not None:
+            summary["cost"] = cost
 
         warnings = []
         if tool_def_tokens > total_tokens * 0.3:
