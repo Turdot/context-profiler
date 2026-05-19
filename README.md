@@ -65,15 +65,20 @@ context-profiler diagnose trace.json --format auto --json
 
 ## Agent Harness
 
-Agents use the CLI to discover formats, validate input, and get structured diagnosis:
+Agents use the CLI to discover, validate, and diagnose — all outputs are stable JSON contracts with error codes and next-step guidance.
 
 ```bash
-context-profiler formats list --json          # discover supported formats
-context-profiler validate trace.json --json   # check before analyzing
-context-profiler diagnose trace.json --json   # structured issues + evidence
+# 1. Discover what formats are supported
+context-profiler formats list --json
+
+# 2. Validate before analyzing (returns error codes + agent_action if invalid)
+context-profiler validate trace.json --format auto --json
+
+# 3. Diagnose: structured issues with evidence
+context-profiler diagnose trace.json --format auto --json
 ```
 
-Example diagnosis output:
+Agents get actionable contracts, not just error messages:
 
 ```json
 {
@@ -81,17 +86,22 @@ Example diagnosis output:
     {
       "code": "TOOL_INPUT_BLOAT",
       "severity": "critical",
-      "message": "Tool inputs (not results) consume a large share of context.",
-      "evidence": { "tool_input_tokens": 595, "ratio": 0.752 },
-      "recommendation": "Consider using artifact references or shorter identifiers."
+      "evidence": { "tool_input_tokens": 6234, "ratio": 0.72 },
+      "recommendation": "Use artifact references instead of full payloads."
+    }
+  ],
+  "diff_hints": [
+    {
+      "type": "possible_artifact_churn",
+      "evidence": { "artifact_key": "src/app.tsx", "modifications": 4 }
     }
   ]
 }
 ```
 
-Issue codes: `TOOL_INPUT_BLOAT`, `TOOL_RESULT_DOMINATES`, `TOP_TOOL_CONTEXT_HOTSPOT`, `REPEATED_CONTENT_BLOCK`, `REPEATED_TOOL_INPUT`, `STATIC_CONTEXT_BLOAT`
+**Issue codes**: `TOOL_INPUT_BLOAT` · `TOOL_RESULT_DOMINATES` · `TOP_TOOL_CONTEXT_HOTSPOT` · `REPEATED_CONTENT_BLOCK` · `REPEATED_TOOL_INPUT` · `STATIC_CONTEXT_BLOAT`
 
-This repo also ships an [`analyze-agent-context`](skills/analyze-agent-context/SKILL.md) skill for Cursor, Claude Code, and Open Plugins compatible tools.
+**Agent skill**: This repo ships an [`analyze-agent-context`](skills/analyze-agent-context/SKILL.md) skill for Cursor, Claude Code, and Open Plugins compatible tools — agents learn to fetch traces and route them into `context-profiler` automatically.
 
 ## Supported Inputs
 
