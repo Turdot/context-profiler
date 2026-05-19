@@ -114,6 +114,15 @@ def _render_token_summary(console: Console, summary: dict) -> None:
             tool_table.add_row(f"    {tool_name}", _format_tokens(tokens), _pct(tokens, total))
         console.print(tool_table)
 
+    cost = summary.get("cost")
+    if cost:
+        console.print()
+        console.print("[bold]  Estimated Cost[/bold]")
+        model_name = cost.get("estimated_model", "unknown")
+        input_cost = cost.get("estimated_input_cost_usd", 0)
+        console.print(f"    Model: {model_name}")
+        console.print(f"    Input cost: ${input_cost:.4f}")
+
 
 def _render_timeline(console: Console, timeline: list[dict]) -> None:
     console.print()

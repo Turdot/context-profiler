@@ -7,6 +7,7 @@ from typing import Any
 from context_profiler.context_diff import analyze_context_diff
 from context_profiler.formats import describe_format
 from context_profiler.models import Session
+from context_profiler.pricing import estimate_cost
 from context_profiler.profiler import ProfileResult
 from context_profiler.session_insights import analyze_session_insights
 
@@ -158,6 +159,37 @@ def diagnose_result(result: ProfileResult, session: Session | None = None) -> di
                 "recommendation": "Move stable repeated arguments into references or shorter identifiers.",
             })
 
+    # Context overflow risk from budget forecast
+    forecast = session_insights.get("budget_forecast")
+    if forecast and forecast.get("estimated_overflow_turn") is not None:
+        current_turn_count = len(session.requests) if session else 0
+        overflow_turn = forecast["estimated_overflow_turn"]
+        utilization = forecast["current_utilization"]
+        # Trigger if overflow is within 2x the current turn count
+        if current_turn_count > 0 and overflow_turn <= current_turn_count * 2:
+            if utilization > 0.8:
+                severity = "critical"
+            elif utilization > 0.5:
+                severity = "warning"
+            else:
+                severity = "info"
+            issues.append({
+                "code": "CONTEXT_OVERFLOW_RISK",
+                "severity": severity,
+                "message": "Context is projected to overflow the model window at the current growth rate.",
+                "evidence": {
+                    "growth_rate_per_turn": forecast["growth_rate_per_turn"],
+                    "current_utilization": forecast["current_utilization"],
+                    "estimated_overflow_turn": forecast["estimated_overflow_turn"],
+                    "context_window_tokens": forecast["context_window_tokens"],
+                    "model": forecast["model"],
+                },
+                "recommendation": "Consider compacting earlier turns, summarizing tool results, or removing stale context before the window fills.",
+            })
+
+    # Cost estimation
+    cost_info = _compute_cost(result, session)
+
     return {
         "schema_version": "0.1",
         "source": result.source,
@@ -168,10 +200,37 @@ def diagnose_result(result: ProfileResult, session: Session | None = None) -> di
             "warnings": result.all_warnings,
         },
         "issues": issues,
+        "cost": cost_info,
         "diff_summary": diff["diff_summary"],
         "diff_hints": diff["diff_hints"] + session_insights["hints"],
         "session_insights": session_insights,
     }
+
+
+def _compute_cost(result: ProfileResult, session: Session | None = None) -> dict[str, Any] | None:
+    """Compute cost estimation for the profiled request or session."""
+    token = result.analyzer_results.get("token_counter")
+    if not token:
+        return None
+
+    summary = token.summary
+    model = summary.get("model", "unknown")
+
+    if session and session.requests:
+        # Session mode: sum input tokens across all requests
+        total_input = sum(req.total_input_tokens for req in session.requests)
+        cost = estimate_cost(input_tokens=total_input, model=model)
+        if cost:
+            cost["mode"] = "session"
+            cost["num_requests"] = len(session.requests)
+        return cost
+    else:
+        # Snapshot mode: single request
+        total_input = summary.get("total_input_tokens", 0)
+        cost = estimate_cost(input_tokens=total_input, model=model)
+        if cost:
+            cost["mode"] = "snapshot"
+        return cost
 
 
 def _analysis_scope(result: ProfileResult, session: Session | None = None) -> dict[str, Any]:
