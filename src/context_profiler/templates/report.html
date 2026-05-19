@@ -89,10 +89,141 @@ body {
   border-radius: 3px;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.07s;
+  transition: background 0.10s ease, border-color 0.10s ease, color 0.10s ease, transform 0.10s ease;
 }
-.toolbar-btn:hover { background: var(--bg-3); color: var(--text-1); }
+.toolbar-btn:hover { background: var(--bg-3); color: var(--text-1); transform: translateY(-1px); }
+.toolbar-btn:focus-visible,
+.findings-close:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
 .toolbar-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.toolbar-btn.has-findings {
+  color: var(--text-0);
+  border-color: rgba(210,153,34,0.6);
+}
+
+/* ── Findings drawer ─────────────────────────────── */
+.findings-panel {
+  position: fixed;
+  top: 24px;
+  right: 0;
+  bottom: 0;
+  width: min(420px, 42vw);
+  min-width: 320px;
+  background: var(--bg-1);
+  border-left: 1px solid var(--border);
+  z-index: 20;
+  transform: translateX(100%);
+  transition: transform 0.12s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+.findings-panel.open { transform: translateX(0); }
+.findings-header {
+  height: 34px;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+.findings-title { font-size: 11px; font-weight: 600; color: var(--text-0); }
+.findings-count { font-size: 10px; color: var(--text-2); }
+.findings-close {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-2);
+  width: 18px;
+  height: 18px;
+  line-height: 16px;
+  border-radius: 3px;
+  font: 13px/16px 'IBM Plex Mono', monospace;
+  cursor: pointer;
+  padding: 0;
+  text-align: center;
+}
+.findings-close:hover { color: var(--text-0); background: var(--bg-3); border-color: var(--border); }
+.findings-list {
+  overflow: auto;
+  padding: 8px;
+}
+.finding-group {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 8px;
+  background: rgba(255,255,255,0.015);
+  overflow: hidden;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.finding-group:hover { border-color: rgba(91,155,245,0.32); }
+.finding-group-header {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  cursor: pointer;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  transition: background 0.10s ease;
+}
+.finding-group-header:hover { background: var(--bg-3); }
+.finding-group-toggle {
+  color: var(--text-2);
+  width: 12px;
+  font-size: 10px;
+}
+.finding-group-title {
+  flex: 1;
+  color: var(--text-0);
+  font-size: 11px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.finding-group-meta {
+  color: var(--text-2);
+  font-size: 10px;
+}
+.finding-group.collapsed .finding-group-items { display: none; }
+.finding-group.collapsed .finding-group-header { border-bottom: 0; }
+.finding-item {
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  background: transparent;
+  padding: 7px 9px 8px 28px;
+  cursor: pointer;
+  transition: background 0.10s ease;
+}
+.finding-item:last-child { border-bottom: 0; }
+.finding-item:hover { background: var(--bg-3); }
+.finding-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.finding-kind {
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--text-2);
+  letter-spacing: 0.5px;
+}
+.finding-severity {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--bg-3);
+  color: var(--text-1);
+}
+.finding-severity.critical { color: #ff7b72; }
+.finding-severity.warning { color: #d29922; }
+.finding-code { font-size: 11px; color: var(--text-0); font-weight: 600; line-height: 1.35; }
+.finding-message { font-size: 10px; color: var(--text-1); line-height: 1.45; margin-top: 4px; }
+.finding-evidence { font-size: 10px; color: var(--text-2); margin-top: 5px; line-height: 1.4; }
+.findings-empty {
+  color: var(--text-2);
+  font-size: 11px;
+  padding: 14px 8px;
+}
 
 /* ── Timeline ────────────────────────────────────── */
 .timeline {
@@ -245,6 +376,7 @@ body {
 .json-tree { font-size: 11px; line-height: 1.6; white-space: pre; }
 .json-key { color: #79c0ff; }
 .json-str { color: #a5d6ff; }
+.json-multiline-str { white-space: pre-wrap; word-break: break-word; }
 .json-num { color: #d2a8ff; }
 .json-bool { color: #ff7b72; }
 .json-null { color: #8b949e; }
@@ -390,12 +522,30 @@ body {
   padding: 0 10px; height: 22px;
   cursor: pointer; user-select: none;
   font-size: 11px;
+  transition: background 0.10s ease;
 }
 .tools-detail-html .td-inv-header:hover { background: rgba(255,255,255,0.04); }
 .tools-detail-html .td-inv.open > .td-inv-header { background: rgba(91,155,245,0.1); }
 .tools-detail-html .td-inv-header .idx { color: #a0a0a0; }
 .tools-detail-html .td-inv-header .tok { font-size: 11px; }
-.tools-detail-html .td-inv-header .arrow { color: #666; font-size: 8px; text-align: right; transition: transform 0.15s; }
+.tools-detail-html .td-inv-header .arrow {
+  width: 14px;
+  height: 14px;
+  justify-self: end;
+  position: relative;
+  transition: transform 0.15s ease;
+}
+.tools-detail-html .td-inv-header .arrow::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 3px;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 5px solid #666;
+}
 .tools-detail-html .td-inv-header .mini-bar {
   display: flex; height: 10px; border-radius: 1px; overflow: hidden;
 }
@@ -433,6 +583,190 @@ body {
   font-size: 12px;
 }
 
+/* ── Session Flow view ───────────────────────────── */
+.flow-pane {
+  flex: 1;
+  display: none;
+  overflow: hidden;
+  background: var(--bg-0);
+  position: relative;
+}
+.flow-pane.visible { display: block; }
+.flow-pane canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.flow-echarts {
+  position: absolute;
+  inset: 0;
+  display: none;
+}
+.flow-pane.echarts-active > #flow-canvas { display: none; }
+.flow-pane.echarts-active .flow-echarts { display: block; }
+.flow-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+/* ── Artifact Duplication view ───────────────────── */
+.artifacts-pane {
+  flex: 1;
+  display: none;
+  overflow: hidden;
+  background: var(--bg-0);
+  color: var(--text-0);
+  font-size: 11px;
+}
+.artifacts-pane.visible { display: flex; }
+.artifacts-left {
+  width: 34%;
+  min-width: 260px;
+  border-right: none;
+  overflow-y: auto;
+  padding: 10px;
+}
+.artifacts-resize-handle {
+  width: 5px;
+  cursor: ew-resize;
+  background: var(--border);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.artifacts-resize-handle:hover,
+.artifacts-resize-handle.dragging {
+  background: var(--accent);
+}
+.artifacts-right {
+  flex: 1;
+  overflow: auto;
+  padding: 14px;
+}
+.artifacts-left::-webkit-scrollbar,
+.artifacts-right::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background: var(--bg-1);
+}
+.artifacts-left::-webkit-scrollbar-thumb,
+.artifacts-right::-webkit-scrollbar-thumb {
+  background: var(--bg-3);
+  border-radius: 3px;
+}
+.artifacts-left::-webkit-scrollbar-thumb:hover,
+.artifacts-right::-webkit-scrollbar-thumb:hover {
+  background: var(--text-2);
+}
+.artifact-item {
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  border-radius: 4px;
+  padding: 8px 9px 9px 11px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+}
+.artifact-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: transparent;
+}
+.artifact-item:hover {
+  border-color: rgba(91,155,245,0.45);
+  background: var(--bg-3);
+  transform: translateX(2px);
+}
+.artifact-item.active {
+  border-color: var(--accent);
+  background: linear-gradient(90deg, rgba(91,155,245,0.16), var(--bg-3) 42%);
+  box-shadow: inset 0 0 0 1px rgba(91,155,245,0.08);
+}
+.artifact-item.active::before { background: var(--accent); }
+.artifact-title { color: var(--text-0); font-weight: 600; margin-bottom: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.artifact-title-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.artifact-prefix {
+  color: var(--text-2);
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.035);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-size: 9px;
+  font-weight: 500;
+  flex: 0 0 auto;
+}
+.artifact-id { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.artifact-meta { color: var(--text-2); font-size: 10px; line-height: 1.5; }
+.artifact-metrics { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 6px; }
+.artifact-metric-chip {
+  color: var(--text-1);
+  background: rgba(255,255,255,0.045);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 999px;
+  padding: 1px 6px;
+  font-size: 9px;
+  line-height: 1.5;
+}
+.artifact-metric-chip.strong {
+  color: #d29922;
+  border-color: rgba(210,153,34,0.26);
+  background: rgba(210,153,34,0.08);
+}
+.artifact-tools { display: flex; flex-wrap: wrap; gap: 4px; }
+.artifact-tool-badge {
+  color: var(--text-2);
+  background: rgba(91,155,245,0.08);
+  border: 1px solid rgba(91,155,245,0.14);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 9px;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.artifact-timeline-row {
+  display: grid;
+  grid-template-columns: 56px 160px 80px 90px 1fr;
+  gap: 10px;
+  align-items: center;
+  min-height: 28px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  cursor: pointer;
+  transition: background 0.10s ease;
+}
+.artifact-timeline-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.artifact-timeline-row:hover { background: rgba(255,255,255,0.04); }
+.artifact-bar {
+  height: 8px;
+  background: #d29922;
+  opacity: 0.75;
+  border-radius: 2px;
+}
+.artifact-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-2);
+}
+
 </style>
 </head>
 <body>
@@ -446,6 +780,9 @@ body {
     <span style="font-size:10px;color:var(--text-2);">View:</span>
     <button class="toolbar-btn active" data-view="icicle">Icicle</button>
     <button class="toolbar-btn" data-view="tools">Tools</button>
+    <button class="toolbar-btn" data-view="persistence">Persistence</button>
+    <div class="toolbar-sep"></div>
+    <button class="toolbar-btn" id="findings-btn">Findings</button>
     <div class="toolbar-sep"></div>
     <span style="font-size:10px;color:var(--text-2);">Color:</span>
     <button class="toolbar-btn active" data-scheme="role">Semantic</button>
@@ -477,6 +814,17 @@ body {
   </div>
 </div>
 
+<div class="flow-pane" id="persistence-pane">
+  <canvas id="persistence-canvas"></canvas>
+  <div class="flow-empty" id="persistence-empty" style="display:none">No session persistence data</div>
+</div>
+
+<div class="artifacts-pane" id="artifacts-pane">
+  <div class="artifacts-left" id="artifacts-left"></div>
+  <div class="artifacts-resize-handle" id="artifacts-resize-handle"></div>
+  <div class="artifacts-right" id="artifacts-right"></div>
+</div>
+
 <div class="detail-resize-handle" id="detail-resize-handle"></div>
 <div class="detail-panel" id="detail-panel">
   <div class="detail-left" id="detail-left"></div>
@@ -484,6 +832,15 @@ body {
 </div>
 
 <div class="tooltip" id="tooltip"></div>
+
+<div class="findings-panel" id="findings-panel">
+  <div class="findings-header">
+    <span class="findings-title">Findings</span>
+    <span class="findings-count" id="findings-count"></span>
+    <button class="findings-close findings-close-icon" id="findings-close" title="Close findings">×</button>
+  </div>
+  <div class="findings-list" id="findings-list"></div>
+</div>
 
 <script>
 /* ════════════════════════════════════════════════════
@@ -495,7 +852,7 @@ if (!DATA) {
   throw new Error('No data');
 }
 
-const { metrics, icicle, timeline, session_trees, warnings, tool_analysis, context_diff } = DATA;
+const { metrics, icicle, timeline, session_trees, warnings, tool_analysis, context_diff, session_insights, persistence_blocks, diagnosis } = DATA;
 const diffTransitions = (context_diff && context_diff.transitions) || [];
 const diffHints = (context_diff && context_diff.diff_hints) || [];
 const diffByRequest = new Map(diffTransitions.map(d => [d.request_index, d]));
@@ -582,6 +939,151 @@ let viewport = { y0: 0, y1: 1 };
 
 /* DPR */
 const dpr = window.devicePixelRatio || 1;
+
+/* ════════════════════════════════════════════════════
+   FINDINGS DRAWER
+   ════════════════════════════════════════════════════ */
+const findingsBtn = document.getElementById('findings-btn');
+const findingsPanel = document.getElementById('findings-panel');
+const findingsClose = document.getElementById('findings-close');
+const findingsList = document.getElementById('findings-list');
+const findingsCount = document.getElementById('findings-count');
+const findingsItems = [
+  ...((diagnosis && diagnosis.issues) || []).map((issue, idx) => ({
+    kind: 'issue',
+    idx,
+    code: issue.code,
+    severity: issue.severity || 'info',
+    message: issue.message,
+    evidence: issue.evidence || {},
+    recommendation: issue.recommendation || '',
+  })),
+  ...((diagnosis && diagnosis.diff_hints) || []).map((hint, idx) => ({
+    kind: 'hint',
+    idx,
+    code: hint.type,
+    severity: hint.confidence || 'hint',
+    message: hint.reason,
+    evidence: hint.evidence || {},
+    request_index: hint.request_index,
+  })),
+];
+const collapsedFindingGroups = new Set();
+
+function findingEvidenceSummary(finding) {
+  const parts = [];
+  if (finding.request_index !== undefined && finding.request_index !== null) {
+    parts.push(`request #${finding.request_index}`);
+  }
+  if (finding.evidence.tool_name) parts.push(`tool ${finding.evidence.tool_name}`);
+  if (finding.evidence.artifact_key) parts.push(`artifact ${finding.evidence.artifact_key}`);
+  if (finding.evidence.total_wasted_tokens) parts.push(`${fmtK(finding.evidence.total_wasted_tokens)} wasted`);
+  if (finding.evidence.ratio) parts.push(`${(finding.evidence.ratio * 100).toFixed(1)}%`);
+  return parts.join(' · ');
+}
+
+function groupFindings(items) {
+  const groups = [];
+  const byKey = new Map();
+  for (let i = 0; i < items.length; i++) {
+    const finding = items[i];
+    const key = `${finding.kind}:${finding.code}`;
+    let group = byKey.get(key);
+    if (!group) {
+      group = {
+        key,
+        kind: finding.kind,
+        code: finding.code,
+        severity: finding.severity,
+        items: [],
+      };
+      byKey.set(key, group);
+      groups.push(group);
+    }
+    group.items.push({...finding, originalIndex: i});
+  }
+  return groups;
+}
+
+function renderFindings() {
+  findingsCount.textContent = `${findingsItems.length} total`;
+  findingsBtn.textContent = findingsItems.length ? `Findings ${findingsItems.length}` : 'Findings';
+  if (findingsItems.length) findingsBtn.classList.add('has-findings');
+
+  if (!findingsItems.length) {
+    findingsList.innerHTML = '<div class="findings-empty">No findings for this report.</div>';
+    return;
+  }
+
+  findingsList.innerHTML = groupFindings(findingsItems).map(group => {
+    const collapsed = collapsedFindingGroups.has(group.key);
+    const itemText = group.items.length === 1 ? '1 item' : `${group.items.length} items`;
+    return `
+    <div class="finding-group ${collapsed ? 'collapsed' : ''}" data-group-key="${escHtml(group.key)}">
+      <div class="finding-group-header" data-group-key="${escHtml(group.key)}">
+        <span class="finding-group-toggle">${collapsed ? '▶' : '▼'}</span>
+        <span class="finding-kind">${escHtml(group.kind)}</span>
+        <span class="finding-group-title">${escHtml(group.code)}</span>
+        <span class="finding-severity ${escHtml(group.severity)}">${escHtml(group.severity)}</span>
+        <span class="finding-group-meta">${itemText}</span>
+      </div>
+      <div class="finding-group-items">
+        ${group.items.map(finding => `
+          <div class="finding-item" data-finding-idx="${finding.originalIndex}">
+            <div class="finding-message">${escHtml(finding.message || finding.recommendation || '')}</div>
+            ${findingEvidenceSummary(finding) ? `<div class="finding-evidence">${escHtml(findingEvidenceSummary(finding))}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  }).join('');
+}
+
+function toggleFindings(open) {
+  const shouldOpen = open === undefined ? !findingsPanel.classList.contains('open') : open;
+  findingsPanel.classList.toggle('open', shouldOpen);
+  findingsBtn.classList.toggle('active', shouldOpen);
+}
+
+function navigateFinding(finding) {
+  const reqIdx = finding.request_index;
+  if (reqIdx !== undefined && reqIdx !== null) {
+    const timelineIdx = timeline.findIndex(d => d.request_index === reqIdx);
+    if (timelineIdx >= 0) {
+      switchView('icicle');
+      switchToRound(timelineIdx);
+      return;
+    }
+  }
+
+  const toolName = finding.evidence && finding.evidence.tool_name;
+  if (toolName) {
+    switchView('tools');
+    selectToolByName(toolName);
+    return;
+  }
+
+  switchView('icicle');
+}
+
+findingsBtn.addEventListener('click', () => toggleFindings());
+findingsClose.addEventListener('click', () => toggleFindings(false));
+findingsList.addEventListener('click', (ev) => {
+  const groupHeader = ev.target.closest('.finding-group-header');
+  if (groupHeader) {
+    const key = groupHeader.dataset.groupKey;
+    if (collapsedFindingGroups.has(key)) collapsedFindingGroups.delete(key);
+    else collapsedFindingGroups.add(key);
+    renderFindings();
+    return;
+  }
+
+  const item = ev.target.closest('.finding-item');
+  if (!item) return;
+  const finding = findingsItems[Number(item.dataset.findingIdx)];
+  if (finding) navigateFinding(finding);
+});
 
 /* ════════════════════════════════════════════════════
    D3-LIKE HIERARCHY + PARTITION (no D3 dependency)
@@ -701,12 +1203,26 @@ function renderTimeline() {
 
     const diff = diffByRequest.get(d.request_index);
     const hints = hintsByRequest.get(d.request_index) || [];
-    const hasLargeAddition = hints.some(h => h.type === 'large_addition');
-    const hasToolAddition = hints.some(h => h.type === 'high_tool_use_addition');
-    if (diff && (hasLargeAddition || hasToolAddition)) {
+    const markerHint = hints.find(h => [
+      'budget_pressure',
+      'compression_opportunity',
+      'token_carryover_hotspot',
+      'possible_artifact_lifecycle_churn',
+      'large_addition',
+      'high_tool_use_addition',
+    ].includes(h.type));
+    if (diff && markerHint) {
       const totalH = (total / yMax) * chartH;
       const markerY = pad.top + chartH - totalH - 5 * dpr;
-      ctx.fillStyle = hasLargeAddition ? '#d29922' : '#8957e5';
+      const markerColors = {
+        budget_pressure: '#ff7b72',
+        compression_opportunity: '#2ea043',
+        token_carryover_hotspot: '#5b9bf5',
+        possible_artifact_lifecycle_churn: '#d29922',
+        large_addition: '#d29922',
+        high_tool_use_addition: '#8957e5',
+      };
+      ctx.fillStyle = markerColors[markerHint.type] || '#d29922';
       ctx.globalAlpha = 0.9;
       ctx.beginPath();
       ctx.moveTo(x + bw / 2, markerY + 5 * dpr);
@@ -1158,6 +1674,7 @@ document.addEventListener('mousemove', (ev) => {
   const newH = clamp(tlResizeStartH + dy, 50, window.innerHeight * 0.5);
   tlEl.style.height = newH + 'px';
   renderTimeline();
+  requestRender();
 });
 
 document.addEventListener('mouseup', () => {
@@ -1186,9 +1703,10 @@ function renderJsonTree(obj, indent) {
   if (obj === null || obj === undefined) {
     lines.push(`<span class="json-line">${pad}<span class="json-null">null</span></span>`);
   } else if (typeof obj === 'string') {
-    const escaped = escHtml(obj).replace(/\n/g, '\\n');
+    const escaped = escHtml(obj);
     const display = escaped.length > 200 ? escaped.slice(0, 200) + '…' : escaped;
-    lines.push(`<span class="json-line">${pad}<span class="json-str">"${display}"</span></span>`);
+    const cls = obj.includes('\n') ? 'json-str json-multiline-str' : 'json-str';
+    lines.push(`<span class="json-line">${pad}<span class="${cls}">"${display}"</span></span>`);
   } else if (typeof obj === 'number') {
     lines.push(`<span class="json-line">${pad}<span class="json-num">${obj}</span></span>`);
   } else if (typeof obj === 'boolean') {
@@ -1308,6 +1826,7 @@ document.addEventListener('mousemove', (ev) => {
   const dy = resizeStartY - ev.clientY;
   detailHeight = clamp(resizeStartH + dy, 80, window.innerHeight * 0.7);
   detailPanel.style.height = detailHeight + 'px';
+  requestRender();
 });
 
 document.addEventListener('mouseup', () => {
@@ -1418,7 +1937,6 @@ function switchToRound(index) {
   document.getElementById('call-badge').textContent = `Call #${currentRound}`;
 
   showDetail(null);
-  showRoundDiffDetail(currentRound);
   fitViewport();
   renderTimeline();
   renderIcicle();
@@ -1733,34 +2251,932 @@ function buildFilterChips() {
 buildFilterChips();
 
 /* ════════════════════════════════════════════════════
-   VIEW TOGGLE (Icicle / Tools)
+   VIEW TOGGLE (Icicle / Tools / Flow)
    ════════════════════════════════════════════════════ */
 const iciclePane = document.getElementById('icicle-pane');
 const toolsPane = document.getElementById('tools-pane');
+const flowPane = document.getElementById('flow-pane');
+const artifactsPane = document.getElementById('artifacts-pane');
 const roleFilterBar = document.getElementById('role-filter-bar');
 
 function switchView(view) {
   currentView = view;
   document.querySelectorAll('.toolbar-btn[data-view]').forEach(b => b.classList.remove('active'));
-  document.querySelector(`.toolbar-btn[data-view="${view}"]`).classList.add('active');
+  const btn = document.querySelector(`.toolbar-btn[data-view="${view}"]`);
+  if (btn) btn.classList.add('active');
+
+  const persistencePane = document.getElementById('persistence-pane');
 
   if (view === 'icicle') {
     iciclePane.style.display = '';
     toolsPane.classList.remove('visible');
+    if (persistencePane) persistencePane.classList.remove('visible');
+    artifactsPane.classList.remove('visible');
     roleFilterBar.style.display = '';
     requestRender();
-  } else {
+  } else if (view === 'tools') {
     iciclePane.style.display = 'none';
     toolsPane.classList.add('visible');
+    if (persistencePane) persistencePane.classList.remove('visible');
+    artifactsPane.classList.remove('visible');
     roleFilterBar.style.display = 'none';
     showDetail(null);
     renderToolsView();
+  } else if (view === 'persistence') {
+    iciclePane.style.display = 'none';
+    toolsPane.classList.remove('visible');
+    if (persistencePane) persistencePane.classList.add('visible');
+    artifactsPane.classList.remove('visible');
+    roleFilterBar.style.display = 'none';
+    showDetail(null);
+    renderPersistenceView();
+  } else if (view === 'flow') {
+    iciclePane.style.display = 'none';
+    toolsPane.classList.remove('visible');
+    if (persistencePane) persistencePane.classList.remove('visible');
+    artifactsPane.classList.remove('visible');
+    roleFilterBar.style.display = 'none';
+    showDetail(null);
+    renderFlowView();
+  } else if (view === 'artifacts') {
+    iciclePane.style.display = 'none';
+    toolsPane.classList.remove('visible');
+    if (persistencePane) persistencePane.classList.remove('visible');
+    artifactsPane.classList.add('visible');
+    roleFilterBar.style.display = 'none';
+    showDetail(null);
+    renderArtifactsView();
   }
 }
 
 document.querySelectorAll('.toolbar-btn[data-view]').forEach(btn => {
   btn.addEventListener('click', () => switchView(btn.dataset.view));
 });
+
+/* ════════════════════════════════════════════════════
+   PERSISTENCE VIEW (heatmap: content blocks × requests)
+   ════════════════════════════════════════════════════ */
+const persistenceCanvas = document.getElementById('persistence-canvas');
+const persistenceCtx = persistenceCanvas ? persistenceCanvas.getContext('2d') : null;
+const persistenceEmpty = document.getElementById('persistence-empty');
+const persistenceRows = persistence_blocks || [];
+let persistenceHoveredRow = -1;
+let persistenceHoveredCol = -1;
+let persistenceScrollY = 0;
+let persistenceMaxScrollY = 0;
+
+const ROLE_COLORS_P = {
+  system: '#9c8ad1',
+  user: '#5b9bf5',
+  assistant: '#238636',
+  tool: '#da6d28',
+};
+
+function renderPersistenceView() {
+  if (!persistenceCanvas || !persistenceCtx) return;
+  const pane = document.getElementById('persistence-pane');
+  if (!pane) return;
+  const rect = pane.getBoundingClientRect();
+  if (rect.width < 10 || rect.height < 10) return;
+
+  persistenceCanvas.width = rect.width * dpr;
+  persistenceCanvas.height = rect.height * dpr;
+  const W = rect.width;
+  const H = rect.height;
+  const ctx = persistenceCtx;
+  ctx.clearRect(0, 0, persistenceCanvas.width, persistenceCanvas.height);
+  ctx.save();
+  ctx.scale(dpr, dpr);
+
+  if (!persistenceRows.length || !timeline.length) {
+    if (persistenceEmpty) persistenceEmpty.style.display = '';
+    ctx.restore();
+    return;
+  }
+  if (persistenceEmpty) persistenceEmpty.style.display = 'none';
+
+  const nReqs = timeline.length;
+  const nRows = persistenceRows.length;
+  const pad = { top: 70, right: 180, bottom: 30, left: 200 };
+  const cellW = Math.max(8, Math.min(28, (W - pad.left - pad.right) / nReqs));
+  const cellH = Math.max(16, Math.min(28, (H - pad.top - pad.bottom) / nRows));
+  const chartW = cellW * nReqs;
+  const chartH = cellH * nRows;
+  const barH = 40;
+
+  persistenceMaxScrollY = Math.max(0, (pad.top + barH + 12 + chartH + pad.bottom) - H);
+  persistenceScrollY = clamp(persistenceScrollY, 0, persistenceMaxScrollY);
+  const offsetY = -persistenceScrollY;
+
+  // Title
+  ctx.font = "11px 'IBM Plex Mono', monospace";
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#a0a0a0';
+  ctx.fillText('Context Persistence: which content blocks survive across requests', pad.left, 16 + offsetY);
+
+  // Top bar chart: total tokens per request
+  const requestTotals = timeline.map(d => d.total_tokens || 0);
+  const maxTotal = Math.max(...requestTotals, 1);
+  const barTop = 28 + offsetY;
+  for (let i = 0; i < nReqs; i++) {
+    const x = pad.left + i * cellW;
+    const h = (requestTotals[i] / maxTotal) * barH;
+    ctx.fillStyle = 'rgba(91, 155, 245, 0.6)';
+    ctx.fillRect(x + 1, barTop + barH - h, cellW - 2, h);
+  }
+  ctx.font = "8px 'IBM Plex Mono', monospace";
+  ctx.fillStyle = '#666';
+  ctx.textAlign = 'center';
+  const tickStep = Math.max(1, Math.floor(nReqs / 16));
+  for (let i = 0; i < nReqs; i += tickStep) {
+    ctx.fillText(`#${i}`, pad.left + i * cellW + cellW / 2, barTop + barH + 10);
+  }
+
+  // Heatmap
+  const heatTop = barTop + barH + 18;
+  let allTokens = [];
+  for (const row of persistenceRows) {
+    for (const v of Object.values(row.cells)) {
+      if (v > 0) allTokens.push(v);
+    }
+  }
+  allTokens.sort((a, b) => a - b);
+  const vMin = allTokens.length ? allTokens[0] : 1;
+  const vMax = allTokens.length ? allTokens[allTokens.length - 1] : 1;
+  const logMin = Math.log(Math.max(1, vMin));
+  const logMax = Math.log(Math.max(2, vMax));
+
+  function cellColor(tokens) {
+    if (tokens <= 0) return null;
+    const t = (Math.log(tokens) - logMin) / Math.max(0.01, logMax - logMin);
+    const clamped = Math.max(0.15, Math.min(1.0, t));
+    const r = Math.round(6 + (91 - 6) * (1 - clamped));
+    const g = Math.round(6 + (155 - 6) * (1 - clamped));
+    const b = Math.round(40 + (245 - 40) * clamped);
+    return `rgb(${r},${g},${b})`;
+  }
+
+  // Row labels + role strip + cells
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let ri = 0; ri < nRows; ri++) {
+    const row = persistenceRows[ri];
+    const y = heatTop + ri * cellH + offsetY;
+    if (y + cellH < 0 || y > H) continue;
+
+    // Role color strip
+    ctx.fillStyle = ROLE_COLORS_P[row.role] || '#666';
+    ctx.fillRect(pad.left - 8, y + 2, 4, cellH - 4);
+
+    // Label
+    ctx.font = "9px 'IBM Plex Mono', monospace";
+    ctx.fillStyle = ri === persistenceHoveredRow ? '#e0e0e0' : '#a0a0a0';
+    const label = row.label.length > 24 ? row.label.slice(0, 23) + '…' : row.label;
+    ctx.fillText(label, pad.left - 14, y + cellH / 2);
+
+    // Cells
+    for (let ci = 0; ci < nReqs; ci++) {
+      const reqIdx = timeline[ci].request_index;
+      const tokens = row.cells[reqIdx] || 0;
+      const x = pad.left + ci * cellW;
+      const color = cellColor(tokens);
+      if (color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x + 1, y + 1, cellW - 2, cellH - 2);
+      }
+      // Hover highlight
+      if (ri === persistenceHoveredRow && ci === persistenceHoveredCol) {
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
+      }
+    }
+
+    // Right annotation
+    const chips = [];
+    if (row.turns_present >= 2) chips.push(`${row.turns_present}× turns`);
+    chips.push(`${(row.total_tokens / 1000).toFixed(1)}K`);
+    const isCompactCandidate = row.turns_present >= 3 && row.role !== 'system';
+    ctx.textAlign = 'left';
+    ctx.font = "8px 'IBM Plex Mono', monospace";
+    ctx.fillStyle = isCompactCandidate ? '#e06060' : '#666';
+    let annotation = chips.join(' · ');
+    if (isCompactCandidate) annotation += '  COMPACT?';
+    ctx.fillText(annotation, pad.left + chartW + 10, y + cellH / 2);
+    ctx.textAlign = 'right';
+  }
+
+  // Hover tooltip
+  if (persistenceHoveredRow >= 0 && persistenceHoveredRow < nRows && persistenceHoveredCol >= 0 && persistenceHoveredCol < nReqs) {
+    const row = persistenceRows[persistenceHoveredRow];
+    const reqIdx = timeline[persistenceHoveredCol].request_index;
+    const tokens = row.cells[reqIdx] || 0;
+    const tipX = pad.left + persistenceHoveredCol * cellW + cellW + 8;
+    const tipY = heatTop + persistenceHoveredRow * cellH + offsetY - 4;
+    const tipText = `${row.label} | req #${reqIdx} | ${tokens.toLocaleString()} tokens`;
+    ctx.font = "10px 'IBM Plex Mono', monospace";
+    const tw = ctx.measureText(tipText).width;
+    const tx = Math.min(tipX, W - tw - 20);
+    ctx.fillStyle = 'rgba(20,20,20,0.92)';
+    ctx.fillRect(tx - 4, tipY - 10, tw + 8, 18);
+    ctx.fillStyle = '#e0e0e0';
+    ctx.textAlign = 'left';
+    ctx.fillText(tipText, tx, tipY);
+    ctx.textAlign = 'right';
+  }
+
+  ctx.restore();
+}
+
+// Persistence View mouse interaction
+if (persistenceCanvas) {
+  persistenceCanvas.addEventListener('mousemove', (e) => {
+    const rect = persistenceCanvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const nReqs = timeline.length;
+    const nRows = persistenceRows.length;
+    const pad = { top: 70, right: 180, bottom: 30, left: 200 };
+    const cellW = Math.max(8, Math.min(28, (rect.width - pad.left - pad.right) / nReqs));
+    const cellH = Math.max(16, Math.min(28, (rect.height - pad.top - pad.bottom) / nRows));
+    const barH = 40;
+    const heatTop = 28 + barH + 18 - persistenceScrollY;
+
+    const col = Math.floor((x - pad.left) / cellW);
+    const row = Math.floor((y - heatTop) / cellH);
+    const newRow = (row >= 0 && row < nRows && col >= 0 && col < nReqs) ? row : -1;
+    const newCol = (col >= 0 && col < nReqs && row >= 0 && row < nRows) ? col : -1;
+    if (newRow !== persistenceHoveredRow || newCol !== persistenceHoveredCol) {
+      persistenceHoveredRow = newRow;
+      persistenceHoveredCol = newCol;
+      renderPersistenceView();
+    }
+  });
+
+  persistenceCanvas.addEventListener('mouseleave', () => {
+    persistenceHoveredRow = -1;
+    persistenceHoveredCol = -1;
+    renderPersistenceView();
+  });
+
+  persistenceCanvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    persistenceScrollY = clamp(persistenceScrollY + e.deltaY * 0.5, 0, persistenceMaxScrollY);
+    renderPersistenceView();
+  }, { passive: false });
+
+  persistenceCanvas.addEventListener('click', (e) => {
+    if (persistenceHoveredCol >= 0 && persistenceHoveredCol < timeline.length) {
+      switchView('icicle');
+      switchToRound(persistenceHoveredCol);
+    }
+  });
+}
+
+/* ════════════════════════════════════════════════════
+   SESSION FLOW VIEW (Sankey-like carryover/artifact spans)
+   ════════════════════════════════════════════════════ */
+const flowCanvas = document.getElementById('flow-canvas');
+const flowCtx = flowCanvas ? flowCanvas.getContext('2d') : null;
+const flowEmpty = document.getElementById('flow-empty');
+const FLOW_MAX_LINKS = 36;
+let flowRows = [];
+let flowNodes = [];
+let flowHoveredLink = null;
+let flowHoveredNode = null;
+let flowScrollY = 0;
+let flowMaxScrollY = 0;
+
+function flowX(requestIndex, pad, chartW) {
+  const n = Math.max(1, timeline.length - 1);
+  return pad.left + (requestIndex / n) * chartW;
+}
+
+function flowLabel(item) {
+  if (item.label) return item.label;
+  if (item.artifact_key) return item.artifact_key;
+  if (item.tool_name) return item.tool_name;
+  return item.kind || item.type || 'context';
+}
+
+function findIcicleNodeForBlock(blockId) {
+  const nodes = icicleHierarchy && icicleHierarchy.nodes || [];
+  const direct = nodes.find(n => n.id === blockId || n.block_id === blockId);
+  if (direct) return direct;
+
+  const match = /^r\d+:m(\d+):b(\d+)$/.exec(blockId || '');
+  if (!match) return null;
+  const messageIndex = Number(match[1]);
+  const messageNode = nodes.find(n => typeof n.name === 'string' && n.name.startsWith(`[${messageIndex}]`));
+  if (!messageNode) return null;
+
+  const contentNode = (messageNode.children || []).find(n => n.name === 'content');
+  const toolCallsNode = (messageNode.children || []).find(n => n.name === 'tool_calls');
+  return contentNode || toolCallsNode || messageNode;
+}
+
+function selectIcicleBlock(requestIndex, blockId) {
+  const timelineIdx = timeline.findIndex(d => d.request_index === requestIndex);
+  if (timelineIdx < 0) return false;
+  switchView('icicle');
+  switchToRound(timelineIdx);
+  const node = findIcicleNodeForBlock(blockId);
+  if (!node) return false;
+  zoomToNode(node);
+  showDetail(node);
+  return true;
+}
+
+function selectedPropagationLinks() {
+  const links = session_insights && session_insights.propagation && session_insights.propagation.links || [];
+  const spawnLinks = links
+    .filter(link => link.type === 'spawn')
+    .sort((a, b) => (b.value || 0) - (a.value || 0))
+    .slice(0, 28);
+  const carryLinks = links
+    .filter(link => link.type === 'carry')
+    .sort((a, b) => (b.value || 0) - (a.value || 0))
+    .slice(0, Math.max(0, FLOW_MAX_LINKS - spawnLinks.length));
+  return [...spawnLinks, ...carryLinks].slice(0, FLOW_MAX_LINKS);
+}
+
+function buildFlowGroups(links) {
+  const groups = [];
+  const groupBySource = new Map();
+  for (const link of links) {
+    if (link.type === 'spawn') {
+      const existing = groupBySource.get(link.source);
+      if (existing) {
+        existing.links.push(link);
+      } else {
+        const group = { source: link.source, type: 'spawn', links: [link] };
+        groupBySource.set(link.source, group);
+        groups.push(group);
+      }
+    } else {
+      groups.push({ source: `${link.source}:${link.target}`, type: link.type, links: [link] });
+    }
+  }
+  groups.forEach(group => {
+    group.links.sort((a, b) => (
+      (a.target_request_index - b.target_request_index)
+      || ((b.value || 0) - (a.value || 0))
+    ));
+  });
+  return groups;
+}
+
+function renderPropagationSankey() {
+  if (!flowPane || !flowCanvas) return false;
+  const links = selectedPropagationLinks();
+  if (!links.length) return false;
+
+  const rect = flowPane.getBoundingClientRect();
+  flowCanvas.width = rect.width * dpr;
+  flowCanvas.height = rect.height * dpr;
+  const W = rect.width;
+  const H = rect.height;
+  const ctx = flowCtx;
+  ctx.clearRect(0, 0, flowCanvas.width, flowCanvas.height);
+  ctx.save();
+  ctx.scale(dpr, dpr);
+  flowRows = [];
+  flowNodes = [];
+  flowEmpty.style.display = 'none';
+
+  const pad = { top: 52, right: 42, bottom: 42, left: 42 };
+  const chartW = W - pad.left - pad.right;
+  const chartH = H - pad.top - pad.bottom;
+  const nodeData = session_insights && session_insights.propagation && session_insights.propagation.nodes || [];
+  const nodeById = new Map(nodeData.map(node => [node.id, node]));
+  const visibleLinks = links.filter(link => nodeById.has(link.source) && nodeById.has(link.target));
+  const flowGroups = buildFlowGroups(visibleLinks);
+  const groupGap = 24;
+  const targetGap = 24;
+  const groupHeights = flowGroups.map(group => Math.max(58, group.links.length * targetGap + 20));
+  const neededColumnH = groupHeights.reduce((sum, height) => sum + height, 0)
+    + Math.max(0, flowGroups.length - 1) * groupGap
+    + 80;
+  const innerH = Math.max(chartH, neededColumnH);
+  flowMaxScrollY = Math.max(0, innerH - chartH);
+  flowScrollY = clamp(flowScrollY, 0, flowMaxScrollY);
+  const nodeW = 10;
+  const maxLinkValue = Math.max(...visibleLinks.map(link => link.value || 1), 1);
+
+  const linkLayout = new Map();
+  let groupTop = pad.top + 18 - flowScrollY;
+  flowGroups.forEach((group, groupIdx) => {
+    const groupHeight = groupHeights[groupIdx];
+    const sourceY = groupTop + groupHeight / 2;
+    const firstTargetY = groupTop + Math.max(12, (groupHeight - (group.links.length - 1) * targetGap) / 2);
+    group.links.forEach((link, linkIdx) => {
+      const lineW = Math.max(2, Math.min(18, 2 + ((link.value || 1) / maxLinkValue) * 16));
+      const targetY = firstTargetY + linkIdx * targetGap;
+      const sourceKey = `source:${group.source}`;
+      const targetKey = `target:${group.source}:${link.target}`;
+      linkLayout.set(link, { lineW, sourceY, targetY, sourceKey, targetKey });
+    });
+    groupTop += groupHeight + groupGap;
+  });
+
+  const flowNodeByKey = new Map();
+  visibleLinks.forEach((link) => {
+    const sourceData = nodeById.get(link.source);
+    const targetData = nodeById.get(link.target);
+    const layout = linkLayout.get(link);
+    const makeNode = (data, role, key, laneY, nodeH) => {
+      const x = flowX(data.request_index, pad, chartW);
+      const isAccum = data.kind === 'accumulation';
+      return {
+        ...data,
+        id: `${key}:${role}`,
+        original_id: data.id,
+        x0: x - nodeW / 2,
+        x1: x + nodeW / 2,
+        y0: laneY - nodeH / 2,
+        y1: laneY + nodeH / 2,
+        laneY,
+        link,
+        source_id: link.source,
+        target_id: link.target,
+        block_id: data.block_id,
+        request_index: data.request_index,
+        kind: isAccum ? 'accumulation' : data.kind,
+      };
+    };
+    if (!flowNodeByKey.has(layout.sourceKey)) {
+      const sourceCount = visibleLinks.filter(item => item.source === link.source && item.type === 'spawn').length || 1;
+      const sourceH = Math.max(18, Math.min(82, sourceCount * 12 + 10));
+      flowNodeByKey.set(layout.sourceKey, makeNode(sourceData, 'source', layout.sourceKey, layout.sourceY, sourceH));
+    }
+    const targetH = Math.max(18, Math.min(44, layout.lineW * 3.8));
+    flowNodeByKey.set(layout.targetKey, makeNode(targetData, 'target', layout.targetKey, layout.targetY, targetH));
+  });
+  flowNodes = [...flowNodeByKey.values()];
+
+  ctx.font = "11px 'IBM Plex Mono', monospace";
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#a0a0a0';
+  ctx.fillText('Repeated Context Flow: exact carry and spawn fan-out across requests', pad.left, 22);
+
+  const tickStep = Math.max(1, Math.floor(timeline.length / 12));
+  ctx.font = "9px 'IBM Plex Mono', monospace";
+  ctx.fillStyle = '#666';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < timeline.length; i += tickStep) {
+    const req = timeline[i].request_index;
+    const x = flowX(req, pad, chartW);
+    ctx.strokeStyle = 'rgba(255,255,255,0.055)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, pad.top - 12);
+    ctx.lineTo(x, H - pad.bottom + 4);
+    ctx.stroke();
+    ctx.fillText(`#${req}`, x, H - pad.bottom + 16);
+  }
+
+  for (const link of visibleLinks) {
+    const layout = linkLayout.get(link);
+    const source = flowNodeByKey.get(layout.sourceKey);
+    const target = flowNodeByKey.get(layout.targetKey);
+    if (!source || !target) continue;
+    const lineW = Math.max(2, Math.min(18, 2 + ((link.value || 1) / maxLinkValue) * 16));
+    const color = link.type === 'spawn' ? '#d29922' : '#5b9bf5';
+    const isHovered = flowHoveredLink && flowHoveredLink.source === link.source && flowHoveredLink.target === link.target;
+    const isRelatedToHoveredNode = flowHoveredNode && (flowHoveredNode.original_id === link.source || flowHoveredNode.original_id === link.target);
+    const hasHover = !!flowHoveredLink || !!flowHoveredNode;
+    const cp = Math.max(36, Math.abs(target.x0 - source.x1) * 0.45);
+    const y0 = source.laneY;
+    const y1 = target.laneY;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = isHovered || isRelatedToHoveredNode ? lineW + 2 : lineW;
+    ctx.globalAlpha = hasHover
+      ? (isHovered || isRelatedToHoveredNode ? 0.92 : 0.12)
+      : (link.type === 'spawn' ? 0.72 : 0.56);
+    ctx.beginPath();
+    ctx.moveTo(source.x1, y0);
+    ctx.bezierCurveTo(source.x1 + cp, y0, target.x0 - cp, y1, target.x0, y1);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    flowRows.push({
+      item: {
+        ...link,
+        flow_type: link.type,
+        first_request_index: link.source_request_index,
+        source_block_id: link.source_block_id,
+        label: `${link.source_label} → ${link.target_label}`,
+      },
+      x0: source.x1,
+      x1: target.x0,
+      y0,
+      y1,
+      cp,
+      lineW,
+      y: (y0 + y1) / 2,
+      hitY0: Math.min(y0, y1) - Math.max(8, lineW * 1.5),
+      hitY1: Math.max(y0, y1) + Math.max(8, lineW * 1.5),
+    });
+  }
+
+  for (const node of flowNodes) {
+    const hasHover = !!flowHoveredLink || !!flowHoveredNode;
+    const isRelatedToHoveredLink = flowHoveredLink && (flowHoveredLink.source === node.original_id || flowHoveredLink.target === node.original_id);
+    const isHovered = flowHoveredNode && flowHoveredNode.id === node.id;
+    const isAccumulation = node.kind === 'accumulation' || node.link.type === 'accumulation';
+    const isSpawn = node.link && node.link.type === 'spawn';
+    ctx.fillStyle = isAccumulation || isSpawn ? '#d29922' : '#5b9bf5';
+    ctx.globalAlpha = hasHover ? (isHovered || isRelatedToHoveredLink ? 1 : 0.22) : 0.85;
+    const nodeWidth = node.kind === 'accumulation' ? nodeW + 8 : nodeW;
+    const nodeX = node.x0 - (node.kind === 'accumulation' ? 4 : 0);
+    ctx.fillRect(nodeX, node.y0, nodeWidth, node.y1 - node.y0);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.24)';
+    ctx.strokeRect(nodeX + 0.5, node.y0 + 0.5, nodeWidth - 1, node.y1 - node.y0 - 1);
+
+    const label = node.name.length > 26 ? node.name.slice(0, 25) + '…' : node.name;
+    ctx.save();
+    ctx.translate(node.x0 - 4, node.y0 + 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.font = "9px 'IBM Plex Mono', monospace";
+    ctx.fillStyle = '#888';
+    ctx.fillText(label, 0, 0);
+    ctx.restore();
+  }
+
+  ctx.textAlign = 'left';
+  ctx.font = "9px 'IBM Plex Mono', monospace";
+  let lx = pad.left;
+  for (const [label, color] of [['Carry', '#5b9bf5'], ['Spawn', '#d29922']]) {
+    ctx.fillStyle = color;
+    ctx.fillRect(lx, H - 14, 10, 8);
+    lx += 14;
+    ctx.fillStyle = '#888';
+    ctx.fillText(label, lx, H - 10);
+    lx += ctx.measureText(label).width + 18;
+  }
+  if (flowMaxScrollY > 0) {
+    const trackH = chartH;
+    const thumbH = Math.max(24, chartH * (chartH / innerH));
+    const thumbY = pad.top + (flowScrollY / flowMaxScrollY) * (trackH - thumbH);
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(W - 10, pad.top, 3, trackH);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fillRect(W - 10, thumbY, 3, thumbH);
+  }
+  ctx.restore();
+  return true;
+}
+
+function flowNodeHitTest(x, y) {
+  return flowNodes.find(node => {
+    const extra = node.kind === 'accumulation' ? 8 : 4;
+    return x >= node.x0 - extra && x <= node.x1 + extra && y >= node.y0 && y <= node.y1;
+  });
+}
+
+function distanceToCubicSample(x, y, flow) {
+  let best = Infinity;
+  const steps = 28;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const mt = 1 - t;
+    const px = mt ** 3 * flow.x0
+      + 3 * mt ** 2 * t * (flow.x0 + flow.cp)
+      + 3 * mt * t ** 2 * (flow.x1 - flow.cp)
+      + t ** 3 * flow.x1;
+    const py = mt ** 3 * flow.y0
+      + 3 * mt ** 2 * t * flow.y0
+      + 3 * mt * t ** 2 * flow.y1
+      + t ** 3 * flow.y1;
+    best = Math.min(best, Math.hypot(px - x, py - y));
+  }
+  return best;
+}
+
+function flowLinkHitTest(x, y) {
+  return flowRows.find(flow => (
+    x >= Math.min(flow.x0, flow.x1) - 12
+    && x <= Math.max(flow.x0, flow.x1) + 12
+    && y >= flow.hitY0
+    && y <= flow.hitY1
+    && distanceToCubicSample(x, y, flow) <= Math.max(8, flow.lineW * 1.4)
+  ));
+}
+
+function renderFlowTooltip(ev, node, row) {
+  if (!node && !row) {
+    tooltipEl.style.display = 'none';
+    return;
+  }
+  if (node) {
+    tooltipEl.innerHTML = [
+      `<div class="tt-name">${escHtml(node.name)}</div>`,
+      `<div class="tt-row">Request: <span class="tt-val">#${node.request_index}</span></div>`,
+      `<div class="tt-row">Tokens: <span class="tt-val">${fmtK(node.tokens || node.value || 0)}</span></div>`,
+      '<div class="tt-row" style="color:#666;font-size:10px;">Click to inspect block</div>',
+    ].join('');
+  } else {
+    const item = row.item;
+    const typeLabel = item.flow_type === 'spawn' ? 'spawn fan-out' : (item.flow_type || item.type);
+    tooltipEl.innerHTML = [
+      `<div class="tt-name">${escHtml(typeLabel)}</div>`,
+      `<div class="tt-row">Tokens: <span class="tt-val">${fmtK(item.value || item.carried_tokens || 0)}</span></div>`,
+      `<div class="tt-row">Requests: <span class="tt-val">#${item.source_request_index ?? item.first_request_index} → #${item.target_request_index ?? item.last_request_index}</span></div>`,
+      item.similarity ? `<div class="tt-row">Similarity: <span class="tt-val">${(item.similarity * 100).toFixed(0)}%</span></div>` : '',
+      `<div class="tt-row" style="color:#888">${escHtml(item.label || '')}</div>`,
+      '<div class="tt-row" style="color:#666;font-size:10px;">Click to inspect source block</div>',
+    ].filter(Boolean).join('');
+  }
+  tooltipEl.style.display = 'block';
+  moveTooltip(ev);
+}
+
+function renderFlowView() {
+  if (!flowPane || !flowCanvas) return;
+  flowEmpty.textContent = 'No session flow data';
+  if (renderPropagationSankey()) return;
+  const rect = flowPane.getBoundingClientRect();
+  flowCanvas.width = rect.width * dpr;
+  flowCanvas.height = rect.height * dpr;
+  const W = rect.width;
+  const H = rect.height;
+  const ctx = flowCtx;
+  ctx.clearRect(0, 0, flowCanvas.width, flowCanvas.height);
+  ctx.save();
+  ctx.scale(dpr, dpr);
+
+  const allPropagationLinks = session_insights && session_insights.propagation && session_insights.propagation.links || [];
+  const propagationLinks = [
+    ...allPropagationLinks.filter(link => link.type === 'carry').slice(0, 8),
+    ...allPropagationLinks.filter(link => link.type === 'spawn').slice(0, 6),
+  ].sort((a, b) => (b.value || 0) - (a.value || 0));
+  const carry = (session_insights && session_insights.carryover_hotspots || []).slice(0, 8);
+  const artifacts = (session_insights && session_insights.artifact_lifecycles || []).slice(0, 6);
+  const rows = propagationLinks.length
+    ? propagationLinks.map(link => ({
+      ...link,
+      flow_type: link.type,
+      first_request_index: link.source_request_index,
+      last_request_index: link.target_request_index,
+      source_block_id: link.source_block_id,
+      label: `${link.source_label} → ${link.target_label}`,
+      carried_tokens: link.value,
+      carried_request_count: Math.max(1, link.target_request_index - link.source_request_index),
+    }))
+    : [
+      ...carry.map(item => ({...item, flow_type: 'carryover'})),
+      ...artifacts.map(item => ({...item, flow_type: 'artifact'})),
+    ];
+  flowRows = [];
+  flowEmpty.style.display = rows.length ? 'none' : 'flex';
+  if (!rows.length || timeline.length < 2) {
+    ctx.restore();
+    return;
+  }
+
+  const pad = { top: 42, right: 24, bottom: 40, left: 90 };
+  const chartW = W - pad.left - pad.right;
+  const chartH = H - pad.top - pad.bottom;
+  const rowGap = Math.max(18, Math.min(34, chartH / Math.max(1, rows.length)));
+
+  ctx.font = "11px 'IBM Plex Mono', monospace";
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#a0a0a0';
+  ctx.fillText('Session flow: carry and spawn propagation across requests', pad.left, 18);
+
+  /* Request axis */
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad.left, H - pad.bottom);
+  ctx.lineTo(W - pad.right, H - pad.bottom);
+  ctx.stroke();
+
+  const tickStep = Math.max(1, Math.floor(timeline.length / 12));
+  ctx.font = "9px 'IBM Plex Mono', monospace";
+  ctx.fillStyle = '#666';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < timeline.length; i += tickStep) {
+    const req = timeline[i].request_index;
+    const x = flowX(req, pad, chartW);
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.beginPath();
+    ctx.moveTo(x, pad.top - 6);
+    ctx.lineTo(x, H - pad.bottom + 4);
+    ctx.stroke();
+    ctx.fillText(`#${req}`, x, H - pad.bottom + 16);
+  }
+
+  const maxWeight = Math.max(
+    ...rows.map(item => item.carried_tokens || item.tokens || item.occurrences || 1),
+    1,
+  );
+
+  rows.forEach((item, idx) => {
+    const y = pad.top + idx * rowGap + rowGap * 0.55;
+    const start = item.first_request_index ?? (item.request_indices || [0])[0] ?? 0;
+    const end = item.last_request_index ?? (item.request_indices || [start]).slice(-1)[0] ?? start;
+    const x0 = flowX(start, pad, chartW);
+    const x1 = flowX(end, pad, chartW);
+    const weight = item.carried_tokens || item.tokens || item.occurrences || 1;
+    const lineW = Math.max(2, Math.min(12, 2 + (weight / maxWeight) * 10));
+    const color = item.flow_type === 'spawn' || item.flow_type === 'artifact' ? '#d29922' : '#5b9bf5';
+    flowRows.push({
+      item,
+      y,
+      x0,
+      x1,
+      hitY0: y - Math.max(8, lineW * 1.5),
+      hitY1: y + Math.max(8, lineW * 1.5),
+    });
+
+    /* Left label */
+    ctx.textAlign = 'right';
+    ctx.font = "10px 'IBM Plex Mono', monospace";
+    ctx.fillStyle = '#a0a0a0';
+    const label = flowLabel(item);
+    const shortLabel = label.length > 22 ? label.slice(0, 21) + '…' : label;
+    ctx.fillText(shortLabel, pad.left - 8, y);
+
+    /* Sankey-like ribbon */
+    const cp = Math.max(24, (x1 - x0) * 0.35);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineW;
+    ctx.globalAlpha = item.flow_type === 'artifact' ? 0.72 : 0.62;
+    ctx.beginPath();
+    ctx.moveTo(x0, y);
+    ctx.bezierCurveTo(x0 + cp, y - rowGap * 0.35, x1 - cp, y - rowGap * 0.35, x1, y);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    /* Endpoints */
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x0, y, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x1, y, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    /* Metric label */
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#666';
+    const metric = item.flow_type === 'artifact'
+      ? `${item.occurrences} req · ${fmtK(item.tokens)}`
+      : `${item.flow_type} · ${fmtK(item.carried_tokens || item.value)}${item.similarity ? ` · ${(item.similarity * 100).toFixed(0)}%` : ''}`;
+    ctx.fillText(metric, Math.min(x1 + 8, W - pad.right - 90), y);
+  });
+
+  /* Legend */
+  ctx.textAlign = 'left';
+  ctx.font = "9px 'IBM Plex Mono', monospace";
+  let lx = pad.left;
+  for (const [label, color] of [['Carry', '#5b9bf5'], ['Spawn / artifact', '#d29922']]) {
+    ctx.fillStyle = color;
+    ctx.fillRect(lx, H - 14, 10, 8);
+    lx += 14;
+    ctx.fillStyle = '#888';
+    ctx.fillText(label, lx, H - 10);
+    lx += ctx.measureText(label).width + 18;
+  }
+
+  ctx.restore();
+}
+
+if (flowCanvas) {
+flowCanvas.addEventListener('click', (ev) => {
+  const rect = flowCanvas.getBoundingClientRect();
+  const x = ev.clientX - rect.left;
+  const y = ev.clientY - rect.top;
+  const node = flowNodeHitTest(x, y);
+  if (node && node.block_id) {
+    selectIcicleBlock(node.request_index, node.block_id);
+    return;
+  }
+  const row = flowLinkHitTest(x, y);
+  if (!row || !row.item.source_block_id) return;
+  selectIcicleBlock(row.item.first_request_index, row.item.source_block_id);
+});
+
+flowCanvas.addEventListener('mousemove', (ev) => {
+  const rect = flowCanvas.getBoundingClientRect();
+  const x = ev.clientX - rect.left;
+  const y = ev.clientY - rect.top;
+  const node = flowNodeHitTest(x, y);
+  const row = node ? null : flowLinkHitTest(x, y);
+  const nextLink = row ? row.item : null;
+  const linkChanged = (flowHoveredLink && nextLink)
+    ? (flowHoveredLink.source !== nextLink.source || flowHoveredLink.target !== nextLink.target)
+    : flowHoveredLink !== nextLink;
+  const nodeChanged = (flowHoveredNode && node)
+    ? flowHoveredNode.id !== node.id
+    : flowHoveredNode !== node;
+  flowHoveredLink = nextLink;
+  flowHoveredNode = node;
+  if (linkChanged || nodeChanged) requestAnimationFrame(renderPropagationSankey);
+  renderFlowTooltip(ev, node, row);
+  flowCanvas.style.cursor = (node || row) ? 'pointer' : 'default';
+});
+
+flowCanvas.addEventListener('mouseleave', () => {
+  flowHoveredLink = null;
+  flowHoveredNode = null;
+  tooltipEl.style.display = 'none';
+  renderPropagationSankey();
+});
+
+flowCanvas.addEventListener('wheel', (ev) => {
+  if (flowMaxScrollY <= 0) return;
+  ev.preventDefault();
+  flowScrollY = clamp(flowScrollY + ev.deltaY, 0, flowMaxScrollY);
+  renderPropagationSankey();
+}, { passive: false });
+} // end if (flowCanvas)
+
+/* ════════════════════════════════════════════════════
+   ARTIFACT DUPLICATION VIEW
+   ════════════════════════════════════════════════════ */
+const artifactsLeft = document.getElementById('artifacts-left');
+const artifactsRight = document.getElementById('artifacts-right');
+const artifactsResizeHandle = document.getElementById('artifacts-resize-handle');
+let selectedArtifactDup = 0;
+
+function artifactKeyParts(key) {
+  const text = key || 'unknown';
+  const idx = text.indexOf(':');
+  if (idx < 0) return { prefix: 'artifact', id: text };
+  return {
+    prefix: text.slice(0, idx),
+    id: text.slice(idx + 1) || text,
+  };
+}
+
+function renderArtifactToolBadges(tools) {
+  const names = (tools || []).filter(Boolean);
+  const visible = names.slice(0, 2);
+  const extra = names.length - visible.length;
+  const badges = visible.map(tool => `<span class="artifact-tool-badge" title="${escHtml(tool)}">${escHtml(tool)}</span>`);
+  if (extra > 0) badges.push(`<span class="artifact-tool-badge">+${extra}</span>`);
+  return badges.join('') || '<span class="artifact-tool-badge">unknown tool</span>';
+}
+
+function renderArtifactsView() {
+  const duplications = session_insights && session_insights.artifact_duplications || [];
+  if (!duplications.length) {
+    artifactsLeft.innerHTML = '<div class="artifact-empty">No repeated tool-result artifacts detected.</div>';
+    artifactsRight.innerHTML = '';
+    return;
+  }
+  selectedArtifactDup = clamp(selectedArtifactDup, 0, duplications.length - 1);
+  artifactsLeft.innerHTML = duplications.map((item, idx) => `
+    <div class="artifact-item ${idx === selectedArtifactDup ? 'active' : ''}" data-artifact-idx="${idx}">
+      <div class="artifact-title artifact-title-row">
+        <span class="artifact-prefix">${escHtml(artifactKeyParts(item.artifact_key).prefix)}</span>
+        <span class="artifact-id" title="${escHtml(item.artifact_key)}">${escHtml(artifactKeyParts(item.artifact_key).id)}</span>
+      </div>
+      <div class="artifact-metrics">
+        <span class="artifact-metric-chip">${item.occurrences} results</span>
+        <span class="artifact-metric-chip strong">${fmtK(item.redundant_tokens)} redundant</span>
+        <span class="artifact-metric-chip">${(item.avg_similarity * 100).toFixed(0)}% similar</span>
+      </div>
+      <div class="artifact-tools">${renderArtifactToolBadges(item.tools)}</div>
+    </div>
+  `).join('');
+  artifactsLeft.querySelectorAll('.artifact-item').forEach(el => {
+    el.addEventListener('click', () => {
+      selectedArtifactDup = Number(el.dataset.artifactIdx);
+      renderArtifactsView();
+    });
+  });
+
+  const item = duplications[selectedArtifactDup];
+  const maxTokens = Math.max(...item.blocks.map(block => block.tokens), 1);
+  artifactsRight.innerHTML = `
+    <div class="td-title">${escHtml(item.artifact_key)}</div>
+    <div class="artifact-meta" style="margin-bottom:12px;">
+      ${item.occurrences} tool results · ${fmtK(item.total_tokens)} total · ${fmtK(item.redundant_tokens)} redundant · ${(item.avg_similarity * 100).toFixed(0)}% avg similarity
+    </div>
+    <div class="artifact-timeline-row" style="color:var(--text-2);font-size:10px;text-transform:uppercase;letter-spacing:.6px;">
+      <span>Request</span><span>Tool</span><span>Tokens</span><span>Share</span><span>Preview</span>
+    </div>
+    ${item.blocks.map(block => `
+      <div class="artifact-timeline-row" data-request-index="${block.request_index}" data-block-id="${escHtml(block.block_id)}">
+        <span>#${block.request_index}</span>
+        <span>${escHtml(block.tool_name || 'unknown')}</span>
+        <span>${fmtK(block.tokens)}</span>
+        <span><span class="artifact-bar" style="display:inline-block;width:${Math.max(4, (block.tokens / maxTokens) * 78)}px"></span></span>
+        <span style="color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(block.preview || '')}</span>
+      </div>
+    `).join('')}
+  `;
+  artifactsRight.querySelectorAll('.artifact-timeline-row[data-block-id]').forEach(row => {
+    row.addEventListener('click', () => {
+      selectIcicleBlock(Number(row.dataset.requestIndex), row.dataset.blockId);
+    });
+  });
+}
 
 /* ════════════════════════════════════════════════════
    TOOL ANALYSIS VIEW (Canvas-based)
@@ -1801,6 +3217,16 @@ function renderToolsView() {
   taSortTools();
   renderToolsTable();
   renderToolsDetail();
+}
+
+function selectToolByName(toolName) {
+  taSortTools();
+  const idx = taSortedTools.findIndex(t => t.name === toolName);
+  if (idx < 0) return;
+  taSelectedTool = idx;
+  const visibleRows = Math.max(1, Math.floor((toolsLeftEl.getBoundingClientRect().height - TA_HEADER_H) / TA_ROW_H));
+  taScrollY = Math.max(0, (idx - Math.floor(visibleRows / 2)) * TA_ROW_H);
+  renderToolsView();
 }
 
 /* ── Left panel: Tool ranking table ── */
@@ -2039,7 +3465,7 @@ function renderToolsDetail() {
       html += `<span class="tok" style="color:${TA_COLORS.result}">${fmtK(inv.result_tokens)}</span>`;
       html += `<span class="tok">${fmtK(invTotal)}</span>`;
       html += `<span class="mini-bar"><span style="width:${miniCallPct}%;background:${TA_COLORS.call}"></span><span style="width:${miniResPct}%;background:${TA_COLORS.result}"></span></span>`;
-      html += '<span class="arrow">▶</span>';
+      html += '<span class="arrow" aria-hidden="true"></span>';
       html += '</div>';
       html += '<div class="td-inv-body">';
       if (inv.raw_call != null) {
@@ -2184,6 +3610,33 @@ toolsTableCanvas.addEventListener('wheel', (ev) => {
   renderToolsTable();
 }, { passive: false });
 
+/* ── Artifacts pane horizontal resize handle ── */
+{
+  let dragging = false, startX = 0, startW = 0;
+  artifactsResizeHandle.addEventListener('mousedown', (ev) => {
+    ev.preventDefault();
+    dragging = true;
+    startX = ev.clientX;
+    startW = artifactsLeft.getBoundingClientRect().width;
+    artifactsResizeHandle.classList.add('dragging');
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+  });
+  document.addEventListener('mousemove', (ev) => {
+    if (!dragging) return;
+    const paneW = document.getElementById('artifacts-pane').getBoundingClientRect().width;
+    const newW = clamp(startW + (ev.clientX - startX), 260, paneW - 320);
+    artifactsLeft.style.width = newW + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    artifactsResizeHandle.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  });
+}
+
 /* ── Tools pane horizontal resize handle ── */
 {
   let dragging = false, startX = 0, startW = 0;
@@ -2217,6 +3670,7 @@ toolsTableCanvas.addEventListener('wheel', (ev) => {
    INIT
    ════════════════════════════════════════════════════ */
 document.getElementById('mode-badge').textContent = metrics.mode || 'snapshot';
+renderFindings();
 
 if (session_trees.length > 1) {
   /* Session mode: start at last round */

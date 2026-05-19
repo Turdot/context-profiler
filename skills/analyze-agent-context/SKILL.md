@@ -1,6 +1,6 @@
 ---
 name: analyze-agent-context
-description: Analyze LLM agent traces, loops, transcripts, Langfuse exports, OpenTelemetry spans, or raw provider requests with context-profiler. Use when the user asks to analyze/debug/explain a trace, agent run, context growth, stale context, tool bloat, or recently fetched trace JSON.
+description: Analyze LLM agent traces, loops, transcripts, Langfuse exports, or raw provider requests with context-profiler. Use when the user asks to analyze/debug/explain a trace, agent run, context growth, stale context, tool bloat, or recently fetched trace JSON.
 ---
 
 # Analyze Agent Context
@@ -119,11 +119,14 @@ If `which -a context-profiler` shows a stale broken executable before the `pipx`
 
 - `TOOL_USE_DOMINATES_CONTEXT`: tool inputs are the main visible context pressure.
 - `TOP_TOOL_CONTEXT_HOTSPOT`: one tool accounts for a large share of visible context.
+- `STATIC_CONTEXT_BLOAT`: tool definitions consume a large share of input context.
 - `REPEATED_CONTENT_BLOCK`: exact or near-duplicate content is retained.
 - `REPEATED_TOOL_INPUT`: large repeated tool arguments.
 - `large_addition`: turn-to-turn context spike.
 - `high_tool_use_addition`: spike mostly caused by tool input.
 - `possible_artifact_churn`: same artifact appears across multiple tool inputs.
+- `budget_pressure`: cumulative tokens approaching context window limit.
+- `token_carryover_hotspot`: a large block is retained across many later requests.
 
 ## Output Style
 

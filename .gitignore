@@ -41,9 +41,11 @@ trace-*.json
 .claude/
 .cursor/
 
+# Playwright MCP artifacts
+.playwright-mcp/
+
 # uv
 uv.lock
 
 # Example generated files (keep raw data, ignore generated)
 examples/report.html
-examples/session.jsonl

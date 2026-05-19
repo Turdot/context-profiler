@@ -4,45 +4,75 @@
 [![Python](https://img.shields.io/pypi/pyversions/context-profiler)](https://pypi.org/project/context-profiler/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Trace-source agnostic context analysis harness for LLM agents.
+The evidence layer for context engineering. Profile before you prune.
 
-Bring any agent trace, loop, transcript, or raw provider request. `context-profiler` explains how the context grows, which tools dominate it, what repeats, and where turn-to-turn changes happen.
+`context-profiler` turns raw provider requests, observability exports, and agent trajectories into evidence about how context grows, repeats, and concentrates — so you know **what** to compact and **where** it's safe to cut.
 
-![Icicle view — token distribution breakdown](assets/demo-snapshot.gif)
+<p align="center">
+  <img src="assets/readme/hero.png" alt="context-profiler: Icicle view showing token distribution across a 31-turn SWE-agent session" width="100%">
+</p>
 
 ## Why
 
-Agent systems fail quietly when context grows too large, repeats stale observations, carries verbose tool payloads, or churns on the same artifact for many turns. Observability tools tell you what happened. `context-profiler` focuses on what happened to the context.
+Compression tools (LLMLingua, `/compact`, Mem0) execute blindly. They don't tell you what's redundant, what's safe to remove, or what downstream references will break. `context-profiler` fills the missing step:
 
-It is designed for both humans and agents:
+```
+trace → profile → human review → prune/compact decision
+```
 
-- Humans get an interactive HTML report with timeline, icicle, diff, and tool views.
-- Agents get stable JSON from `validate`, `diagnose`, and `schema` commands.
-- Skills teach Cursor, Claude Code, and other Agent Skills compatible tools when to call the CLI.
+Built for both humans and agents:
+- **HTML reports** — interactive timeline, icicle, persistence heatmap, tools, diff, findings
+- **JSON contracts** — stable issue codes and evidence for automated agent workflows
+- **Trace-source agnostic** — same analysis across OpenAI, Anthropic, Langfuse, and public trajectory datasets
 
-![Session mode — timeline and diff](assets/demo-session.gif)
+## Report Views
 
-## What It Finds
+<table>
+  <tr>
+    <td width="50%">
+      <img src="assets/readme/semantic.png" alt="Icicle view with semantic color and diff mode" width="100%">
+      <br>
+      <strong>Icicle</strong>
+      <br>
+      Token distribution per request. Semantic color by role, diff mode for additions/removals.
+    </td>
+    <td width="50%">
+      <img src="assets/readme/persistence.png" alt="Persistence heatmap showing content blocks across requests" width="100%">
+      <br>
+      <strong>Persistence</strong>
+      <br>
+      Which content blocks survive across turns. Blue = token cost. Red = compact candidate.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="assets/readme/tools.png" alt="Tools view with token table and invocation detail" width="100%">
+      <br>
+      <strong>Tools</strong>
+      <br>
+      Which tools dominate the context budget and their invocation details.
+    </td>
+    <td width="50%">
+      <img src="assets/readme/findings.png" alt="Findings drawer with grouped diagnosis issues" width="100%">
+      <br>
+      <strong>Findings</strong>
+      <br>
+      Issue codes with severity, evidence, and actionable recommendations.
+    </td>
+  </tr>
+</table>
 
-- **Tool bloat**: tool inputs/results dominate the visible context.
-- **Context growth spikes**: individual turns that add large payloads.
-- **Repeated content**: exact or near-duplicate blocks retained in context.
-- **Repeated tool inputs**: large repeated tool arguments.
-- **Artifact churn**: the same file/component/path appears across many tool calls.
-- **Partial-scope warnings**: transcripts are useful, but not raw provider requests.
+## Findings Across Public Datasets
 
-## Research Context
+Profiled on real multi-turn agent trajectories from public benchmarks:
 
-`context-profiler` is motivated by recent work showing that long-horizon agents are constrained not only by model quality, but also by how their working context is retained, compressed, and reused across turns.
+| Dataset | Domain | Turns | Total Tokens | Redundancy | Top Issue | Carryover |
+|---------|--------|-------|-------------|------------|-----------|-----------|
+| [SWE-agent](https://huggingface.co/datasets/nebius/SWE-agent-trajectories) | Coding agent | 31 | 27.1K | 26.9% | `REPEATED_CONTENT_BLOCK` | 231K across 20 blocks |
+| [lmcache](https://huggingface.co/datasets/sammshen/lmcache-agentic-traces) | KV-cache traces | 35 | 36.5K | 1.4% | `REPEATED_CONTENT_BLOCK` | 403K across 20 blocks |
+| [OpenHands](https://huggingface.co/datasets/nvidia/SWE-Zero-openhands-trajectories) | Tool-heavy agent | 34 | 23.9K | 0.2% | `REPEATED_CONTENT_BLOCK` | 383K across 20 blocks |
 
-Related work:
-
-- **ByteDance Seed — _Scaling Long-Horizon LLM Agent via Context-Folding_**  
-  Studies context management for long-horizon agents through folding and summarizing intermediate sub-trajectories. This motivates `context-profiler`'s focus on turn-to-turn context diffs, retained observations, and compression/pruning evidence.
-- **SWE-agent — _Agent-Computer Interfaces Enable Automated Software Engineering_**  
-  Shows the importance of the agent-computer interface for software-engineering agents, motivating analysis of tool calls, terminal output, and artifact churn.
-- **WebArena — _A Realistic Web Environment for Building Autonomous Agents_**  
-  Demonstrates the value of realistic multi-step agent trajectories, motivating support for loop/transcript analysis rather than only single prompt snapshots.
+All examples are included in [`examples/`](examples/) with conversion scripts and pre-converted session files.
 
 ## Install
 
@@ -68,18 +98,17 @@ PYTHONPATH=src uv run context-profiler --version
 
 ## Quick Start
 
+Analyze a multi-turn agent session (SWE-agent trajectory included):
+
+```bash
+context-profiler analyze examples/swe_agent/session.jsonl --format openai --html report.html
+```
+
 Analyze a raw provider request:
 
 ```bash
 context-profiler analyze request.json --format auto
 context-profiler diagnose request.json --format auto --json
-```
-
-Analyze a coding-agent transcript:
-
-```bash
-context-profiler diagnose cursor-transcript.jsonl --format cursor-jsonl --json
-context-profiler analyze claude-code-session.jsonl --format claude-code-jsonl --html report.html
 ```
 
 Analyze a Langfuse export:
@@ -122,6 +151,32 @@ Generate an interactive report:
 
 ```bash
 context-profiler analyze session.jsonl --html report.html
+```
+
+## CLI Output
+
+The terminal report gives a quick read on context budget, repeated content, and tool hotspots before you open the HTML report.
+
+```text
+╭──────────────────────────────────────────────────────────────────────────────╮
+│ context-profiler  |  mode: snapshot  |  source:                              │
+│ tests/fixtures/repeated_tool_calls.json                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+⚠ Warnings
+  • Content duplication: 476 redundant tokens (60.2% of total)
+
+Token Distribution
+  Category                  Tokens    % of Total
+  Total Input                  791          100%
+    System Prompt               13          1.6%
+    Tool Definitions            83         10.5%
+    Messages (assistant)       609         77.0%
+    Messages (tool)             70          8.8%
+    Messages (user)             16          2.0%
+
+  Top Tools by Token Usage
+      generate_canvas_component    595    75.2%
 ```
 
 ## Agent-Friendly CLI Harness
@@ -179,16 +234,6 @@ Use `context-profiler formats list --json` for the current machine-readable regi
 
 For `agent-transcript`, analysis is intentionally marked `partial`: hidden system prompts, rules, tool definitions, MCP schemas, and provider compaction may not be present.
 
-## HTML Report
-
-The HTML report is self-contained and keeps the existing profiler style:
-
-- **Icicle view**: hierarchical token breakdown, zoom, breadcrumb navigation.
-- **Context timeline**: growth over turns, with small markers for large additions/tool-input spikes.
-- **Diff mode**: unchanged / added / removed content between requests.
-- **Tools view**: per-tool token table and invocation details.
-- **Detail panel**: selected node or turn-level diff evidence.
-
 ## Example Diagnosis
 
 ```json
@@ -238,6 +283,19 @@ Recommended demo order:
 2. Cursor or Claude Code transcript.
 3. Langfuse trace export.
 4. Multi-turn academic trajectories such as `pagarsky/agent-trace`, `cx-cmu/agent_trajectories`, or SWE-agent traces.
+
+## Research Context
+
+`context-profiler` is motivated by recent work showing that long-horizon agents are constrained not only by model quality, but also by how their working context is retained, compressed, and reused across turns.
+
+Related work:
+
+- **ByteDance Seed — _Scaling Long-Horizon LLM Agent via Context-Folding_**  
+  Studies context management for long-horizon agents through folding and summarizing intermediate sub-trajectories. This motivates `context-profiler`'s focus on turn-to-turn context diffs, retained observations, and compression/pruning evidence.
+- **SWE-agent — _Agent-Computer Interfaces Enable Automated Software Engineering_**  
+  Shows the importance of the agent-computer interface for software-engineering agents, motivating analysis of tool calls, terminal output, and artifact churn.
+- **WebArena — _A Realistic Web Environment for Building Autonomous Agents_**  
+  Demonstrates the value of realistic multi-step agent trajectories, motivating support for loop/transcript analysis rather than only single prompt snapshots.
 
 ## Docs
 

@@ -8,6 +8,7 @@ from context_profiler.context_diff import analyze_context_diff
 from context_profiler.formats import describe_format
 from context_profiler.models import Session
 from context_profiler.profiler import ProfileResult
+from context_profiler.session_insights import analyze_session_insights
 
 _TOOL_USE_DOMINATES_RATIO = 0.5
 _TOOL_USE_DOMINATES_MIN_TOKENS = 100
@@ -28,6 +29,7 @@ def diagnose_result(result: ProfileResult, session: Session | None = None) -> di
     issues: list[dict[str, Any]] = []
     scope = _analysis_scope(result, session=session)
     diff = analyze_context_diff(session)
+    session_insights = analyze_session_insights(session)
 
     token = result.analyzer_results.get("token_counter")
     if token:
@@ -121,7 +123,8 @@ def diagnose_result(result: ProfileResult, session: Session | None = None) -> di
         },
         "issues": issues,
         "diff_summary": diff["diff_summary"],
-        "diff_hints": diff["diff_hints"],
+        "diff_hints": diff["diff_hints"] + session_insights["hints"],
+        "session_insights": session_insights,
     }
 
 

@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "context-profiler",
-      "description": "Analyze agent traces, transcripts, Langfuse exports, OpenTelemetry spans, and raw provider requests with context-profiler.",
+      "description": "Analyze agent traces, transcripts, Langfuse exports, and raw provider requests with context-profiler.",
       "source": "./",
       "strict": false,
       "skills": [

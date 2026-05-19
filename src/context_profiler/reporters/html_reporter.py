@@ -18,15 +18,30 @@ import json
 from pathlib import Path
 from typing import Any
 
-from context_profiler.context_diff import analyze_context_diff
+from collections import defaultdict
+
+from context_profiler.context_diff import ContextBlock, _blocks_for_request, analyze_context_diff
+from context_profiler.diagnostics import diagnose_result
 from context_profiler.models import APIRequest, BlockType, Session
 from context_profiler.profiler import ProfileResult
+from context_profiler.session_insights import analyze_session_insights
 from context_profiler.token_utils import count_tokens
 
 TEMPLATE_PATH = Path(__file__).parent.parent / "templates" / "report.html"
 
 CONTENT_PREVIEW_LIMIT = 3000
 MAX_TREE_DEPTH = 12
+
+
+def _json_for_script(data: Any) -> str:
+    """Serialize JSON so arbitrary trace payloads cannot break the script tag."""
+    return (
+        json.dumps(data, ensure_ascii=False, default=str)
+        .replace("</", "<\\/")
+        .replace("<!--", "<\\!--")
+        .replace("\u2028", "\\u2028")
+        .replace("\u2029", "\\u2029")
+    )
 
 
 def _try_parse_json(s: str) -> Any | None:
@@ -601,6 +616,75 @@ def _build_metrics(result: ProfileResult) -> dict[str, Any]:
     return metrics
 
 
+_PERSISTENCE_MAX_ROWS = 40
+
+
+def _build_persistence_data(session: Session | None) -> list[dict[str, Any]]:
+    """Build persistence matrix rows for the Persistence View.
+
+    Each row represents a unique content block (by hash), showing which
+    requests it appears in and how many tokens it contributes.
+    """
+    if not session or not session.requests:
+        return []
+
+    blocks_by_request = [_blocks_for_request(req) for req in session.requests]
+    groups: dict[str, dict[str, Any]] = {}
+
+    for req_blocks in blocks_by_request:
+        seen: set[str] = set()
+        for b in req_blocks:
+            if b.tokens <= 0 or b.hash in seen:
+                continue
+            seen.add(b.hash)
+            grp = groups.get(b.hash)
+            if grp is None:
+                grp = {
+                    "label": _persistence_label(b),
+                    "role": b.role,
+                    "kind": b.kind,
+                    "tool_name": b.tool_name,
+                    "artifact_key": b.artifact_key,
+                    "cells": {},
+                    "first_req": b.request_index,
+                }
+                groups[b.hash] = grp
+            grp["cells"][b.request_index] = grp["cells"].get(b.request_index, 0) + b.tokens
+
+    rows = []
+    for key, grp in groups.items():
+        cells = grp["cells"]
+        total = sum(cells.values())
+        present = sorted(cells.keys())
+        rows.append({
+            "label": grp["label"],
+            "role": grp["role"],
+            "kind": grp["kind"],
+            "tool_name": grp["tool_name"],
+            "artifact_key": grp["artifact_key"],
+            "cells": cells,
+            "total_tokens": total,
+            "turns_present": len(present),
+            "first_req": present[0],
+            "last_req": present[-1],
+        })
+
+    rows.sort(key=lambda r: (r["total_tokens"], r["turns_present"]), reverse=True)
+    return rows[:_PERSISTENCE_MAX_ROWS]
+
+
+def _persistence_label(b: ContextBlock) -> str:
+    if b.role == "system":
+        return "system prompt"
+    if b.tool_name and b.kind == "tool_result":
+        return f"result: {b.tool_name}"
+    if b.tool_name and b.kind == "tool_use":
+        return f"call: {b.tool_name}"
+    if b.artifact_key:
+        return f"artifact: {b.artifact_key}"
+    return f"{b.role}: {b.kind}"
+
+
 def _build_report_data(
     result: ProfileResult,
     session: Session | None = None,
@@ -640,6 +724,7 @@ def _build_report_data(
 
     tool_analysis = _build_tool_analysis(last_req) if last_req else {"tools": [], "total_context_tokens": 0}
     context_diff = analyze_context_diff(session)
+    session_insights = analyze_session_insights(session)
 
     return {
         "metrics": _build_metrics(result),
@@ -650,6 +735,9 @@ def _build_report_data(
         "warnings": result.all_warnings,
         "tool_analysis": tool_analysis,
         "context_diff": context_diff,
+        "session_insights": session_insights,
+        "persistence_blocks": _build_persistence_data(session),
+        "diagnosis": diagnose_result(result, session=session),
     }
 
 
@@ -664,7 +752,7 @@ def export_html(
     template = TEMPLATE_PATH.read_text(encoding="utf-8")
     html = template.replace(
         "/*__DATA__*/null",
-        json.dumps(data, ensure_ascii=False, default=str),
+        _json_for_script(data),
     )
 
     output_path.write_text(html, encoding="utf-8")
