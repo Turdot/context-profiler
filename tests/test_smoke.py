@@ -487,7 +487,7 @@ def test_skill_distribution_manifests():
     root = Path(__file__).parents[1]
     skill = root / "skills" / "analyze-agent-context" / "SKILL.md"
     open_plugin = root / ".plugin" / "plugin.json"
-    claude_marketplace = root / ".claude-plugin" / "marketplace.json"
+    claude_plugin = root / ".claude-plugin" / "plugin.json"
 
     assert skill.exists()
     assert "name: analyze-agent-context" in skill.read_text()
@@ -496,9 +496,8 @@ def test_skill_distribution_manifests():
     assert plugin_data["name"] == "context-profiler"
     assert plugin_data["skills"] == ["./skills/analyze-agent-context"]
 
-    marketplace_data = json.loads(claude_marketplace.read_text())
-    assert marketplace_data["plugins"][0]["name"] == "context-profiler"
-    assert marketplace_data["plugins"][0]["skills"] == ["./skills/analyze-agent-context"]
+    claude_data = json.loads(claude_plugin.read_text())
+    assert claude_data["name"] == "context-profiler"
 
 
 def test_diagnose_agent_trace_sample_json():

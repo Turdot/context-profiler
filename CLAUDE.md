@@ -82,6 +82,6 @@ Do not put product-distribution skills in `.agents/skills/` or `.claude/skills/`
 If skill paths change, update:
 
 - `.plugin/plugin.json`
-- `.claude-plugin/marketplace.json`
+- `.claude-plugin/plugin.json`
 - README skill distribution section
 - tests covering manifests

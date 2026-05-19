@@ -1,0 +1,8 @@
+{
+  "name": "context-profiler",
+  "description": "Analyze agent traces, transcripts, Langfuse exports, and raw provider requests for context bloat, redundancy, and tool hotspots.",
+  "version": "0.2.0",
+  "author": {
+    "name": "Yanpeng Wang"
+  }
+}
