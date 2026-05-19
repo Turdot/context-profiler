@@ -22,6 +22,17 @@ _BUDGET_PRESSURE_RATIO = 0.8
 _COMPRESSION_DROP_MIN_TOKENS = 5_000
 _COMPRESSION_DROP_RATIO = 0.15
 
+# Context window sizes by model family (tokens)
+# Ordered longest-prefix-first for correct matching
+_CONTEXT_WINDOW_SIZES: list[tuple[str, int]] = [
+    ("gpt-4o-mini", 128_000),
+    ("gpt-4-turbo", 128_000),
+    ("gpt-4o", 128_000),
+    ("claude", 200_000),
+]
+_DEFAULT_CONTEXT_WINDOW = 128_000
+_OVERFLOW_RISK_HORIZON_MULTIPLIER = 2  # warn if overflow within 2x current turn count
+
 
 def analyze_session_insights(session: Session | None) -> dict[str, Any]:
     """Summarize session-level carryover, budget, and artifact lifecycle signals."""
@@ -41,6 +52,7 @@ def analyze_session_insights(session: Session | None) -> dict[str, Any]:
     artifacts = _artifact_lifecycles(blocks_by_request)
     artifact_duplications = _artifact_duplications(session)
     propagation = _propagation_graph(blocks_by_request)
+    forecast = budget_forecast(session)
     hints = _build_hints(carryover, budget_events, artifacts, artifact_duplications)
 
     return {
@@ -49,6 +61,7 @@ def analyze_session_insights(session: Session | None) -> dict[str, Any]:
         "artifact_lifecycles": artifacts,
         "artifact_duplications": artifact_duplications,
         "propagation": propagation,
+        "budget_forecast": forecast,
         "hints": hints,
     }
 
@@ -525,3 +538,58 @@ def _find_first_key(value: Any, keys: tuple[str, ...]) -> Any | None:
             if found is not None:
                 return found
     return None
+
+
+# ---------------------------------------------------------------------------
+# Budget Forecast
+# ---------------------------------------------------------------------------
+
+
+def _resolve_context_window(model: str) -> tuple[str, int]:
+    """Match a model string to a known context window size.
+
+    Returns (matched_model_family, context_window_tokens).
+    """
+    lowered = model.lower()
+    for prefix, size in _CONTEXT_WINDOW_SIZES:
+        if prefix in lowered:
+            return prefix, size
+    return "default", _DEFAULT_CONTEXT_WINDOW
+
+
+def budget_forecast(session: Session) -> dict[str, Any] | None:
+    """Predict when a session will hit the context window limit.
+
+    Returns None for sessions with fewer than 2 requests (not enough data).
+    """
+    if session is None or len(session.requests) < 2:
+        return None
+
+    token_counts = [req.total_input_tokens for req in session.requests]
+    num_turns = len(token_counts)
+
+    # Determine model from the last request (most representative)
+    model_raw = session.requests[-1].model or "unknown"
+    matched_model, context_window = _resolve_context_window(model_raw)
+
+    # Calculate turn-over-turn deltas for growth rate
+    deltas = [token_counts[i] - token_counts[i - 1] for i in range(1, num_turns)]
+    growth_rate = sum(deltas) / len(deltas) if deltas else 0.0
+
+    current_tokens = token_counts[-1]
+    current_utilization = current_tokens / context_window if context_window else 0.0
+
+    # Predict overflow turn (linear extrapolation from current position)
+    estimated_overflow_turn: int | None = None
+    if growth_rate > 0:
+        remaining = context_window - current_tokens
+        turns_until_overflow = remaining / growth_rate
+        estimated_overflow_turn = num_turns + int(turns_until_overflow)
+
+    return {
+        "growth_rate_per_turn": round(growth_rate, 1),
+        "current_utilization": round(current_utilization, 4),
+        "estimated_overflow_turn": estimated_overflow_turn,
+        "context_window_tokens": context_window,
+        "model": matched_model,
+    }
