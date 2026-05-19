@@ -12,6 +12,10 @@ from context_profiler.session_insights import analyze_session_insights
 
 _TOOL_USE_DOMINATES_RATIO = 0.5
 _TOOL_USE_DOMINATES_MIN_TOKENS = 100
+_TOOL_INPUT_BLOAT_RATIO = 0.3
+_TOOL_INPUT_BLOAT_MIN_TOKENS = 100
+_TOOL_RESULT_DOMINATES_RATIO = 0.4
+_TOOL_RESULT_DOMINATES_MIN_TOKENS = 100
 _TOP_TOOL_HOTSPOT_RATIO = 0.3
 _TOP_TOOL_HOTSPOT_MIN_TOKENS = 100
 _REPEATED_FIELD_MIN_WASTE_TOKENS = 500
@@ -61,6 +65,40 @@ def diagnose_result(result: ProfileResult, session: Session | None = None) -> di
                     "recommendation": "Consider externalizing large tool inputs or replacing bulky payloads with artifact references.",
                 })
 
+        # Separate tool input and result analysis
+        tool_use_tokens = summary.get("tool_use_tokens", 0) or 0
+        tool_result_tokens = summary.get("tool_result_tokens", 0) or 0
+
+        if total and tool_use_tokens >= _TOOL_INPUT_BLOAT_MIN_TOKENS:
+            tool_input_ratio = tool_use_tokens / total
+            if tool_input_ratio >= _TOOL_INPUT_BLOAT_RATIO:
+                issues.append({
+                    "code": "TOOL_INPUT_BLOAT",
+                    "severity": _severity_for_ratio(tool_input_ratio),
+                    "message": "Tool inputs (not results) consume a large share of context.",
+                    "evidence": {
+                        "tool_input_tokens": tool_use_tokens,
+                        "total_input_tokens": total,
+                        "ratio": tool_input_ratio,
+                    },
+                    "recommendation": "Tool inputs are often compressible. Consider using artifact references, shorter identifiers, or externalizing large payloads.",
+                })
+
+        if total and tool_result_tokens >= _TOOL_RESULT_DOMINATES_MIN_TOKENS:
+            tool_result_ratio = tool_result_tokens / total
+            if tool_result_ratio >= _TOOL_RESULT_DOMINATES_RATIO:
+                issues.append({
+                    "code": "TOOL_RESULT_DOMINATES",
+                    "severity": _severity_for_ratio(tool_result_ratio),
+                    "message": "Tool results (not inputs) dominate the context budget.",
+                    "evidence": {
+                        "tool_result_tokens": tool_result_tokens,
+                        "total_input_tokens": total,
+                        "ratio": tool_result_ratio,
+                    },
+                    "recommendation": "Tool results often contain real data that cannot be compressed. Consider summarizing large outputs, paginating results, or using streaming.",
+                })
+
         top_tools = summary.get("top_tools_by_tokens", [])
         if total and top_tools:
             top_tool_name, top_tool_tokens = top_tools[0]
@@ -69,6 +107,12 @@ def diagnose_result(result: ProfileResult, session: Session | None = None) -> di
                 top_tool_tokens >= _TOP_TOOL_HOTSPOT_MIN_TOKENS
                 and top_tool_ratio >= _TOP_TOOL_HOTSPOT_RATIO
             ):
+                # Enhanced message with input/result breakdown
+                top_tools_input = summary.get("top_tools_by_input_tokens", [])
+                top_tools_result = summary.get("top_tools_by_result_tokens", [])
+                input_tokens = dict(top_tools_input).get(top_tool_name, 0)
+                result_tokens = dict(top_tools_result).get(top_tool_name, 0)
+
                 issues.append({
                     "code": "TOP_TOOL_CONTEXT_HOTSPOT",
                     "severity": _severity_for_ratio(top_tool_ratio),
@@ -76,6 +120,8 @@ def diagnose_result(result: ProfileResult, session: Session | None = None) -> di
                     "evidence": {
                         "tool_name": top_tool_name,
                         "tool_tokens": top_tool_tokens,
+                        "tool_input_tokens": input_tokens,
+                        "tool_result_tokens": result_tokens,
                         "total_input_tokens": total,
                         "ratio": top_tool_ratio,
                     },

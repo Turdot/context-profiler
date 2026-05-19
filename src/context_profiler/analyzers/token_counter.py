@@ -18,6 +18,8 @@ class TokenCounterAnalyzer(BaseAnalyzer):
         by_role: dict[str, int] = defaultdict(int)
         by_content_type: dict[str, int] = defaultdict(int)
         by_tool_name: dict[str, int] = defaultdict(int)
+        by_tool_name_input: dict[str, int] = defaultdict(int)
+        by_tool_name_result: dict[str, int] = defaultdict(int)
         per_message: list[dict] = []
         total_tokens = 0
 
@@ -30,6 +32,10 @@ class TokenCounterAnalyzer(BaseAnalyzer):
                 by_content_type[block.block_type.value] += block.token_count
                 if block.tool_name:
                     by_tool_name[block.tool_name] += block.token_count
+                    if block.block_type == BlockType.TOOL_USE:
+                        by_tool_name_input[block.tool_name] += block.token_count
+                    elif block.block_type == BlockType.TOOL_RESULT:
+                        by_tool_name_result[block.tool_name] += block.token_count
 
             per_message.append({
                 "index": msg.index,
@@ -43,11 +49,16 @@ class TokenCounterAnalyzer(BaseAnalyzer):
 
         top_messages = sorted(per_message, key=lambda x: x["tokens"], reverse=True)[:10]
         top_tools = sorted(by_tool_name.items(), key=lambda x: x[1], reverse=True)[:10]
+        top_tools_input = sorted(by_tool_name_input.items(), key=lambda x: x[1], reverse=True)[:10]
+        top_tools_result = sorted(by_tool_name_result.items(), key=lambda x: x[1], reverse=True)[:10]
 
         tool_defs_detail = [
             {"name": t.name, "tokens": t.token_count}
             for t in sorted(request.tools, key=lambda t: t.token_count, reverse=True)
         ]
+
+        tool_use_tokens = by_content_type.get("tool_use", 0)
+        tool_result_tokens = by_content_type.get("tool_result", 0)
 
         summary = {
             "total_input_tokens": total_tokens,
@@ -57,7 +68,11 @@ class TokenCounterAnalyzer(BaseAnalyzer):
             "source_format": request.source_format,
             "by_role": dict(by_role),
             "by_content_type": dict(by_content_type),
+            "tool_use_tokens": tool_use_tokens,
+            "tool_result_tokens": tool_result_tokens,
             "top_tools_by_tokens": top_tools,
+            "top_tools_by_input_tokens": top_tools_input,
+            "top_tools_by_result_tokens": top_tools_result,
             "tool_definitions": tool_defs_detail,
         }
 
