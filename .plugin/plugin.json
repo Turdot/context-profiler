@@ -2,7 +2,7 @@
   "name": "context-profiler",
   "description": "Agent context analysis harness for diagnosing context growth, tool bloat, repeated content, and turn-to-turn trace evolution.",
   "version": "0.1.0",
-  "repository": "https://github.com/Turdot/context-profiler",
+  "repository": "https://github.com/yanpgwang/context-profiler",
   "author": {
     "name": "Yanpeng Wang"
   },
