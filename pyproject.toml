@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "context-profiler"
-version = "0.1.0"
+version = "0.2.0"
 description = "Framework-agnostic profiler for LLM agent context windows"
 readme = "README.md"
 license = {text = "MIT"}
@@ -35,9 +35,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Turdot/context-profiler"
-Repository = "https://github.com/Turdot/context-profiler"
-Issues = "https://github.com/Turdot/context-profiler/issues"
+Homepage = "https://github.com/yanpgwang/context-profiler"
+Repository = "https://github.com/yanpgwang/context-profiler"
+Issues = "https://github.com/yanpgwang/context-profiler/issues"
 
 [project.scripts]
 context-profiler = "context_profiler.cli:main"
